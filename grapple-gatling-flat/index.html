@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grapple Gatling</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: full-bleed arena canvas. Menu layer = title on top, black Start button centred, controls at the foot.
+   HUD layer = health + score top corners, hint along the bottom. Single look by choice: ink on pale steel, colour comes from the players. */
+:root {
+  --bg: #d7e3e8;
+  --arena: #e4edf0;
+  --ink: #12161b;
+  --ink-soft: #2c353f;
+  --paper: #f4f8fa;
+  --muted: #475560;
+  --coral: #ff5a4e;
+  --display: "Dela Gothic One", Impact, "Arial Black", sans-serif;
+  --ui: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); overflow: hidden; }
+* { box-sizing: border-box; }
+#app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.layer {
+  position: absolute; inset: 0;
+  padding-block: clamp(14px, 3vh, 28px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+
+/* menu */
+.menu { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; }
+.title {
+  margin: 0; font-family: var(--display); font-weight: 400;
+  font-size: clamp(2.4rem, 9vw, 6.4rem); line-height: 0.98; letter-spacing: 0.005em;
+  text-align: center; text-wrap: balance; color: var(--ink);
+  text-shadow: 0.05em 0.06em 0 var(--coral);
+}
+.center { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.start {
+  pointer-events: auto; cursor: pointer; border: 0; border-radius: 12px;
+  background: #000; color: #fff; font: 700 1.7rem/1 var(--ui); letter-spacing: 0.04em;
+  padding: 0.62em 2.2em 0.7em; box-shadow: 0 6px 0 #3b4650;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.start:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #3b4650; }
+.start:active { transform: translateY(5px); box-shadow: 0 1px 0 #3b4650; }
+.start:focus-visible, .namebox input:focus-visible { outline: 3px solid #3e7bfa; outline-offset: 3px; }
+.namebox { pointer-events: auto; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.namebox input {
+  width: 11.5rem; padding: 0.5em 0.7em; font: 500 1rem var(--ui); color: var(--ink);
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; text-transform: none; letter-spacing: 0;
+}
+.foot { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 100%; }
+#status { margin: 0; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; text-align: center; }
+#status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #9aa7b2; flex: none; }
+#status[data-live="1"]::before { background: #2fbf71; }
+.keys { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; font-size: 0.85rem; color: var(--ink-soft); }
+.keys li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+kbd {
+  font: 700 0.78rem var(--ui); padding: 0.2em 0.55em; background: var(--paper);
+  border: 2px solid var(--ink); border-bottom-width: 4px; border-radius: 6px; white-space: nowrap;
+}
+
+/* hud */
+.hud { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr auto; gap: 12px; }
+.panel { background: rgba(244, 248, 250, 0.88); border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; }
+.hud-tl { grid-column: 1; grid-row: 1; justify-self: start; display: grid; gap: 6px; min-width: 0; }
+.hp { width: min(220px, 50vw); height: 14px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; }
+.hp i { display: block; height: 100%; width: 100%; background: #2fbf71; transition: width 0.12s; }
+.hp i[data-low="1"] { background: #e5483d; }
+#hpText, #kd { font-size: 0.85rem; font-weight: 700; }
+.hud-tr { grid-column: 2; grid-row: 1; display: grid; gap: 8px; justify-items: end; min-width: 0; }
+#board { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; min-width: 170px; max-width: 46vw; }
+#board li { display: flex; justify-content: space-between; gap: 14px; font-size: 0.82rem; }
+#board li.me { font-weight: 700; }
+#board .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#board .sc { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; justify-items: end; font-size: 0.8rem; font-weight: 700; }
+#feed li { background: rgba(244, 248, 250, 0.88); border: 2px solid var(--ink); border-radius: 8px; padding: 3px 8px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmsg { grid-column: 1 / span 2; grid-row: 2; place-self: center; text-align: center; font-family: var(--display); font-size: clamp(1.3rem, 4vw, 2.2rem); background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 0.5em 0.9em; max-width: 100%; box-shadow: 0 6px 0 var(--ink); }
+.hint { grid-column: 1 / span 2; grid-row: 3; justify-self: center; font-size: 0.82rem; font-weight: 700; text-align: center; background: rgba(244, 248, 250, 0.9); border: 2px solid var(--ink); border-radius: 8px; padding: 6px 12px; max-width: 100%; }
+.hint.fade { animation: hintfade 1s ease 10s forwards; }
+@keyframes hintfade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .start, .start:hover, .start:active { transition: none; }
+  .hint.fade { animation-duration: 0.01s; }
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <section id="menu" class="layer menu">
+    <h1 class="title">Grapple Gatling</h1>
+    <div class="center">
+      <button id="startBtn" class="start" type="button">Start</button>
+      <label class="namebox"><span>Name</span><input id="nameIn" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Blob"></label>
+    </div>
+    <div class="foot">
+      <p id="status" data-live="0"></p>
+      <ul class="keys">
+        <li><kbd>A</kbd><kbd>D</kbd> move</li>
+        <li><kbd>W</kbd> / <kbd>Space</kbd> jump</li>
+        <li><kbd>Left click</kbd> shoot</li>
+        <li><kbd>F</kbd> fire the hook, then hold <kbd>F</kbd> to reel in</li>
+        <li><kbd>E</kbd> let go of the hook</li>
+        <li><kbd>Esc</kbd> back to menu</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="hud" class="layer hud" hidden>
+    <div class="hud-tl panel">
+      <div class="hp"><i id="hpFill"></i></div>
+      <div id="hpText"></div>
+      <div id="kd"></div>
+    </div>
+    <div class="hud-tr">
+      <div class="panel"><ol id="board"></ol></div>
+      <ul id="feed"></ul>
+    </div>
+    <div id="cmsg" class="cmsg" hidden></div>
+    <div id="hint" class="hint">Aim with the mouse. Left click shoots. F fires the hook, then hold F to reel in. E lets go. Esc leaves.</div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- constants ---------- */
+  const W = 1280, H = 720, RAD = 16, STEP = 1 / 120;
+  const INK = '#12161b', BG = '#d7e3e8', ARENA = '#e4edf0';
+  const COLORS = ['#ff5a4e', '#ffb020', '#7bc043', '#19b5a5', '#3e7bfa', '#8a5cf6', '#f25ca8', '#ff8a3d'];
+  const GRAV = 1700, JUMP = 720, MAXRUN = 330;
+  const HOOK_SPEED = 1800, HOOK_RANGE = 620;
+  const BULLET_SPEED = 1150, FIRE_CD = 0.26, DMG = 20;
+
+  /* Arena, hand-placed. Outer walls are 24px thick so the hook can bite into them. */
+  const R = [
+    { x: 0, y: 664, w: 1280, h: 56 },
+    { x: 0, y: 0, w: 24, h: 720 }, { x: 1256, y: 0, w: 24, h: 720 }, { x: 0, y: 0, w: 1280, h: 24 },
+    { x: 110, y: 540, w: 230, h: 24 }, { x: 940, y: 540, w: 230, h: 24 },
+    { x: 470, y: 430, w: 340, h: 24 },
+    { x: 190, y: 310, w: 190, h: 24 }, { x: 900, y: 310, w: 190, h: 24 },
+    { x: 560, y: 200, w: 160, h: 24 },
+    { x: 620, y: 560, w: 40, h: 104 },
+    { x: 360, y: 24, w: 36, h: 130 }, { x: 884, y: 24, w: 36, h: 130 }
+  ];
+  const LEGOFF = 14; /* body is a two-circle capsule so the legs have room under the torso */
+  const SPAWNS = [[80, 632], [1200, 632], [225, 508], [1055, 508], [640, 398], [285, 278], [995, 278], [640, 168]];
+
+  /* ---------- helpers ---------- */
+  const $ = (id) => document.getElementById(id);
+  const num = (v, d = 0) => (typeof v === 'number' && isFinite(v) ? v : d);
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const colorOf = (c) => COLORS[((Math.floor(num(c, 0)) % COLORS.length) + COLORS.length) % COLORS.length];
+  const cleanName = (s) => String(s == null ? '' : s).replace(/[^\w \-]/g, '').trim().slice(0, 12) || 'Blob';
+
+  function rayRect(ox, oy, dx, dy, r) {
+    let tmin = 0, tmax = 1;
+    if (Math.abs(dx) < 1e-9) { if (ox < r.x || ox > r.x + r.w) return null; }
+    else {
+      let t1 = (r.x - ox) / dx, t2 = (r.x + r.w - ox) / dx;
+      if (t1 > t2) { const q = t1; t1 = t2; t2 = q; }
+      tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
+      if (tmin > tmax) return null;
+    }
+    if (Math.abs(dy) < 1e-9) { if (oy < r.y || oy > r.y + r.h) return null; }
+    else {
+      let t1 = (r.y - oy) / dy, t2 = (r.y + r.h - oy) / dy;
+      if (t1 > t2) { const q = t1; t1 = t2; t2 = q; }
+      tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
+      if (tmin > tmax) return null;
+    }
+    return tmin;
+  }
+
+  /* Rope = a chain of pivots. pts[0] is where the hook bit; every later point is an obstacle corner the rope is bent around.
+     The player hangs from the last pivot on whatever rope length is left. */
+  const wrapA = (a) => { while (a > Math.PI) a -= 6.2832; while (a < -Math.PI) a += 6.2832; return a; };
+
+  function segHit(x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    let best = null;
+    for (const r of R) {
+      const rr = { x: r.x + 1.5, y: r.y + 1.5, w: r.w - 3, h: r.h - 3 };
+      const t = rayRect(x1, y1, dx, dy, rr);
+      if (t !== null && t < 0.999 && (!best || t < best.t)) best = { t, r };
+    }
+    return best;
+  }
+
+  function distPointSeg(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy || 1e-9;
+    const u = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+    return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy));
+  }
+
+  /* The corner the rope catches first while swinging from (prevX, prevY) to the player's new spot. */
+  function pickCorner(P, prevX, prevY, r) {
+    const corners = [[r.x, r.y, -1, -1], [r.x + r.w, r.y, 1, -1], [r.x, r.y + r.h, -1, 1], [r.x + r.w, r.y + r.h, 1, 1]];
+    const aPrev = Math.atan2(prevY - P[1], prevX - P[0]);
+    const delta = wrapA(Math.atan2(me.y - P[1], me.x - P[0]) - aPrev);
+    const dNew = Math.hypot(me.x - P[0], me.y - P[1]);
+    let best = null, bs = 1e9, fb = null, fbd = 1e9;
+    for (const c of corners) {
+      const cx = c[0] + c[2] * 1.2, cy = c[1] + c[3] * 1.2;
+      const dist = Math.hypot(cx - P[0], cy - P[1]);
+      if (dist < 2) continue;
+      const dc = wrapA(Math.atan2(cy - P[1], cx - P[0]) - aPrev);
+      if (dist < dNew && Math.sign(dc) === Math.sign(delta) && Math.abs(dc) <= Math.abs(delta) + 0.02 && Math.abs(dc) < bs) { bs = Math.abs(dc); best = [cx, cy]; }
+      const dseg = distPointSeg(cx, cy, P[0], P[1], me.x, me.y);
+      if (dseg < fbd) { fbd = dseg; fb = [cx, cy]; }
+    }
+    const c = best || fb;
+    if (!c) return null;
+    const sg = Math.sign((c[0] - P[0]) * (me.y - c[1]) - (c[1] - P[1]) * (me.x - c[0])) || 1;
+    return { p: c, s: sg };
+  }
+
+  /* Wrap the rope round any corner the free segment now cuts through, and unwrap pivots the player has swung back past. */
+  function updateRope(h, prevX, prevY) {
+    for (let guard = 0; guard < 4; guard++) {
+      const P = h.pts[h.pts.length - 1];
+      const hit = segHit(P[0], P[1], me.x, me.y);
+      if (!hit) break;
+      if (h.pts.length >= 9) return false;
+      const c = pickCorner(P, prevX, prevY, hit.r);
+      if (!c) return false;
+      h.pts.push(c.p); h.sg.push(c.s);
+    }
+    while (h.pts.length > 1) {
+      const k = h.pts.length - 1, Pk = h.pts[k], Pj = h.pts[k - 1];
+      const cr = (Pk[0] - Pj[0]) * (me.y - Pk[1]) - (Pk[1] - Pj[1]) * (me.x - Pk[0]);
+      if (cr * h.sg[k] <= 0 && !segHit(Pj[0], Pj[1], me.x, me.y)) { h.pts.pop(); h.sg.pop(); } else break;
+    }
+    return true;
+  }
+
+  function collide(p) {
+    p.onGround = false; p.wallL = false; p.wallR = false;
+    for (let it = 0; it < 2; it++) {
+      for (const off of [0, LEGOFF]) for (const r of R) {
+        const py = p.y + off;
+        const cx = Math.max(r.x, Math.min(p.x, r.x + r.w));
+        const cy = Math.max(r.y, Math.min(py, r.y + r.h));
+        const dx = p.x - cx, dy = py - cy, d2 = dx * dx + dy * dy;
+        if (d2 >= RAD * RAD) continue;
+        let nx, ny, pen;
+        if (d2 > 1e-6) { const d = Math.sqrt(d2); nx = dx / d; ny = dy / d; pen = RAD - d; }
+        else {
+          const l = p.x - r.x, rr = r.x + r.w - p.x, t = py - r.y, b = r.y + r.h - py;
+          const m = Math.min(l, rr, t, b);
+          if (m === t) { nx = 0; ny = -1; pen = t + RAD; }
+          else if (m === b) { nx = 0; ny = 1; pen = b + RAD; }
+          else if (m === l) { nx = -1; ny = 0; pen = l + RAD; }
+          else { nx = 1; ny = 0; pen = rr + RAD; }
+        }
+        p.x += nx * pen; p.y += ny * pen;
+        const vn = p.vx * nx + p.vy * ny;
+        if (vn < 0) { p.vx -= vn * nx; p.vy -= vn * ny; }
+        if (ny < -0.6) p.onGround = true;
+        if (nx > 0.6) p.wallL = true;
+        if (nx < -0.6) p.wallR = true;
+      }
+    }
+  }
+
+  /* ---------- state ---------- */
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let dpr = 1, vw = 0, vh = 0, sc = 1, offX = 0, offY = 0;
+  let room = null, myPeer = null;
+  let state = 'menu';
+  let last = performance.now(), acc = 0, t = 0, lastPush = 0, lastHud = 0, lastStatus = 0, dtFrame = 0.016;
+
+  const newAnim = () => ({ phase: 0, f: [{ x: -5, y: 22 }, { x: 5, y: 22 }], init: false });
+  const keys = new Set();
+  const mouse = { x: 640, y: 360, down: false };
+  const bullets = [];
+  const parts = [];
+  const remotes = new Map();
+  const feed = [];
+
+  const me = {
+    x: 640, y: 600, vx: 0, vy: 0, hp: 100, alive: false, aim: 0,
+    onGround: false, wallL: false, wallR: false, coyote: 0, jumpBuf: 0, fireCd: 0, hookCd: 0,
+    inv: 0, hurt: 0, spawnAge: 1, respawnT: 0, kills: 0, deaths: 0, bid: 0, reel: false, anim: newAnim(),
+    bullets: [], hits: [], color: 0, name: 'Blob', hook: null, lastKiller: '', killerName: ''
+  };
+  const dummy = { x: 1055, y: 508, hp: 100, alive: true, respawn: 0, hurt: 0, anim: newAnim() };
+  const dummyActive = () => state === 'play' && remotes.size === 0;
+
+  /* ---------- sizing ---------- */
+  function resize() {
+    const b = cv.getBoundingClientRect();
+    vw = b.width; vh = b.height;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(vw * dpr)); cv.height = Math.max(1, Math.round(vh * dpr));
+    sc = Math.min(vw / W, vh / H);
+    offX = (vw - W * sc) / 2; offY = (vh - H * sc) / 2;
+  }
+  window.addEventListener('resize', resize);
+
+  function setMouse(e) {
+    const b = cv.getBoundingClientRect();
+    mouse.x = (e.clientX - b.left - offX) / sc;
+    mouse.y = (e.clientY - b.top - offY) / sc;
+  }
+
+  /* ---------- effects ---------- */
+  function sparks(x, y, col, n) {
+    for (let i = 0; i < n; i++) {
+      parts.push({ k: 'd', x, y, vx: (Math.random() - 0.5) * 380, vy: (Math.random() - 0.85) * 340, life: 0.3 + Math.random() * 0.25, max: 0.55, col, r: 2 + Math.random() * 2.5 });
+    }
+  }
+  function ring(x, y, col) {
+    parts.push({ k: 'r', x, y, life: 0.55, max: 0.55, col });
+    parts.push({ k: 'b', x, y, life: 0.55, max: 0.55, col });
+  }
+  function updateParts(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.life -= dt;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      if (p.k === 'd') { p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+    }
+  }
+  function drawParts() {
+    for (const p of parts) {
+      const a = Math.max(0, p.life / p.max);
+      ctx.globalAlpha = a;
+      if (p.k === 'd') { ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill(); }
+      else if (p.k === 'r') {
+        ctx.strokeStyle = p.col; ctx.lineWidth = 2 + 5 * a;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 10 + (1 - a) * 80, 0, 6.2832); ctx.stroke();
+      } else {
+        ctx.fillStyle = p.col; const w = 22 * a;
+        ctx.fillRect(p.x - w / 2, p.y - 120, w, 140);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- networking (room presence carries everything) ---------- */
+  function pushPresence(force) {
+    if (!room) return;
+    const now = performance.now();
+    if (!force && now - lastPush < 50) return;
+    lastPush = now;
+    const h = me.hook;
+    const piv = [];
+    if (h && h.pts) for (let i = 1; i < h.pts.length && i <= 8; i++) piv.push(Math.round(h.pts[i][0]), Math.round(h.pts[i][1]));
+    room.presence({
+      g: 1, n: me.name, c: me.color,
+      x: r1(me.x), y: r1(me.y), vx: Math.round(me.vx), vy: Math.round(me.vy), a: Math.round(me.aim * 100) / 100,
+      hp: me.hp, al: me.alive ? 1 : 0, k: me.kills, d: me.deaths, lk: me.lastKiller || '',
+      hk: h ? [Math.round(h.x), Math.round(h.y), h.state === 'att' ? 1 : 0, piv] : null,
+      b: me.bullets, ht: me.hits
+    }).catch(() => {});
+  }
+
+  function nameOfPeer(id) {
+    if (id && id === myPeer) return me.name;
+    const r = remotes.get(id);
+    return r ? r.name : 'Someone';
+  }
+
+  function addFeed(text) {
+    feed.push({ text, at: t });
+    while (feed.length > 4) feed.shift();
+  }
+
+  function removeBulletKeys(keysList) {
+    if (!keysList.length) return;
+    const set = new Set(keysList);
+    for (let i = bullets.length - 1; i >= 0; i--) if (set.has(bullets[i].key)) bullets.splice(i, 1);
+  }
+
+  function syncRemote(dt) {
+    if (!room) return;
+    const seen = new Set();
+    for (const p of room.peers()) {
+      if (p.sameTab) { myPeer = p.peer; continue; }
+      if (p.kind !== 'viewer') continue;
+      const s = p.presence;
+      if (!s || s.g !== 1) continue;
+      seen.add(p.peer);
+      const px = num(s.x, 640), py = num(s.y, 400);
+      let r = remotes.get(p.peer);
+      if (!r) {
+        let maxId = 0;
+        if (Array.isArray(s.b)) for (const b of s.b) if (Array.isArray(b)) maxId = Math.max(maxId, num(b[0], 0));
+        r = { id: p.peer, x: px, y: py, vx: 0, vy: 0, anim: newAnim(), seenB: maxId, lastD: num(s.d, 0), alive: s.al === 1 };
+        remotes.set(p.peer, r);
+        if (r.alive) ring(px, py, colorOf(s.c));
+      }
+      r.name = cleanName(s.n); r.col = colorOf(s.c); r.aim = num(s.a, 0); r.hp = num(s.hp, 100); r.vx = num(s.vx, 0); r.vy = num(s.vy, 0);
+      r.k = num(s.k, 0); r.d = num(s.d, 0);
+      const was = r.alive; r.alive = s.al === 1;
+      if (!was && r.alive) { r.x = px; r.y = py; ring(px, py, r.col); }
+      const k = Math.min(1, dt * 18);
+      r.x += (px + num(s.vx, 0) * 0.05 - r.x) * k;
+      r.y += (py + num(s.vy, 0) * 0.05 - r.y) * k;
+      r.hk = Array.isArray(s.hk) ? [num(s.hk[0], 0), num(s.hk[1], 0), s.hk[2] === 1 ? 1 : 0, Array.isArray(s.hk[3]) ? s.hk[3].slice(0, 16).map((v) => num(v, 0)) : []] : null;
+
+      if (Array.isArray(s.b)) {
+        for (const b of s.b) {
+          if (!Array.isArray(b)) continue;
+          const id = num(b[0], 0);
+          if (id > r.seenB) {
+            r.seenB = id;
+            bullets.push({ key: p.peer + ':' + id, owner: p.peer, mine: false, x: num(b[1]), y: num(b[2]), vx: num(b[3]), vy: num(b[4]), life: 1.2, col: r.col });
+          }
+        }
+      }
+      if (Array.isArray(s.ht) && s.ht.length) {
+        const mapped = [];
+        for (const key of s.ht) {
+          if (typeof key !== 'string') continue;
+          mapped.push(myPeer && key.startsWith(myPeer + ':') ? 'me:' + key.slice(myPeer.length + 1) : key);
+        }
+        removeBulletKeys(mapped);
+      }
+      if (r.d > r.lastD) {
+        r.lastD = r.d;
+        const killer = typeof s.lk === 'string' ? s.lk : '';
+        if (killer && killer === myPeer) { me.kills++; pushPresence(true); }
+        if (killer) addFeed(nameOfPeer(killer) + ' shot ' + r.name);
+      }
+    }
+    for (const id of Array.from(remotes.keys())) if (!seen.has(id)) remotes.delete(id);
+  }
+
+  /* ---------- gameplay ---------- */
+  function spawnMe() {
+    const others = [];
+    for (const r of remotes.values()) if (r.alive) others.push(r);
+    if (dummyActive() && dummy.alive) others.push(dummy);
+    let best = SPAWNS[0], bd = -1;
+    for (const s of SPAWNS) {
+      let md = 1e6;
+      for (const o of others) md = Math.min(md, Math.hypot(o.x - s[0], o.y - s[1]));
+      md += Math.random() * 140;
+      if (md > bd) { bd = md; best = s; }
+    }
+    me.x = best[0]; me.y = best[1]; me.vx = 0; me.vy = 0;
+    me.hp = 100; me.alive = true; me.inv = 1.4; me.hook = null; me.fireCd = 0.3; me.hookCd = 0; me.spawnAge = 0; me.reel = false;
+    ring(me.x, me.y, COLORS[me.color]);
+    pushPresence(true);
+  }
+
+  function die(killer) {
+    me.alive = false; me.hp = 0; me.deaths++; me.lastKiller = killer || ''; me.hook = null; me.respawnT = 2.4;
+    me.killerName = killer ? nameOfPeer(killer) : 'the arena';
+    sparks(me.x, me.y, COLORS[me.color], 22);
+    addFeed(me.killerName + ' shot ' + me.name);
+    mouse.down = false;
+    pushPresence(true);
+  }
+
+  function hitMe(b) {
+    me.hp = Math.max(0, me.hp - DMG); me.hurt = 0.14;
+    me.hits.push(b.key); if (me.hits.length > 8) me.hits.shift();
+    sparks(b.x, b.y, b.col, 7);
+    if (me.hp <= 0) die(b.owner); else pushPresence(true);
+  }
+
+  function hitDummy(b) {
+    dummy.hp -= DMG; dummy.hurt = 0.14;
+    sparks(b.x, b.y, '#9aa7b2', 7);
+    if (dummy.hp <= 0) {
+      dummy.alive = false; dummy.respawn = 1.6;
+      sparks(dummy.x, dummy.y, '#9aa7b2', 20);
+      me.kills++; addFeed(me.name + ' popped the dummy'); pushPresence(true);
+    }
+  }
+
+  function tryShoot() {
+    if (!me.alive || me.fireCd > 0) return;
+    me.fireCd = FIRE_CD;
+    const a = me.aim, c = Math.cos(a), s = Math.sin(a);
+    const ox = me.x + c * 26, oy = me.y + s * 26;
+    const id = ++me.bid;
+    bullets.push({ key: 'me:' + id, owner: myPeer || '', mine: true, x: ox, y: oy, vx: c * BULLET_SPEED, vy: s * BULLET_SPEED, life: 1.2, col: COLORS[me.color] });
+    me.bullets.push([id, Math.round(ox), Math.round(oy), Math.round(c * BULLET_SPEED), Math.round(s * BULLET_SPEED)]);
+    if (me.bullets.length > 10) me.bullets.shift();
+    me.vx -= c * 40;
+    sparks(ox, oy, '#ffd36b', 3);
+    pushPresence(true);
+  }
+
+  function fireHook() {
+    if (!me.alive || me.hookCd > 0) return;
+    const a = me.aim, c = Math.cos(a), s = Math.sin(a);
+    me.hook = { state: 'fly', x: me.x + c * RAD, y: me.y + s * RAD, dx: c, dy: s, trav: 0, L: 0 };
+    pushPresence(true);
+  }
+  function releaseHook() { me.hook = null; me.reel = false; me.hookCd = 0.15; pushPresence(true); }
+
+  function stepHook(dt) {
+    const h = me.hook;
+    if (!h || h.state !== 'fly') return;
+    const sp = HOOK_SPEED * dt, dx = h.dx * sp, dy = h.dy * sp;
+    let tmin = 2;
+    for (const r of R) { const tt = rayRect(h.x, h.y, dx, dy, r); if (tt !== null && tt < tmin) tmin = tt; }
+    if (tmin <= 1) {
+      h.x += dx * tmin; h.y += dy * tmin;
+      if (segHit(me.x, me.y, h.x, h.y)) { me.hook = null; me.reel = false; me.hookCd = 0.2; pushPresence(true); return; }
+      h.state = 'att'; h.pts = [[h.x, h.y]]; h.sg = [0];
+      h.L = Math.max(36, Math.hypot(me.x - h.x, me.y - h.y));
+      sparks(h.x, h.y, '#ffb020', 6);
+      pushPresence(true);
+      return;
+    }
+    h.x += dx; h.y += dy; h.trav += sp;
+    if (h.trav > HOOK_RANGE) { me.hook = null; me.hookCd = 0.2; pushPresence(true); }
+  }
+
+  function movePlayer(dt) {
+    me.aim = Math.atan2(mouse.y - me.y, mouse.x - me.x);
+    const h = me.hook, att = !!(h && h.state === 'att');
+    const left = keys.has('KeyA') || keys.has('ArrowLeft'), right = keys.has('KeyD') || keys.has('ArrowRight');
+    const dir = (right ? 1 : 0) - (left ? 1 : 0);
+
+    if (dir !== 0) {
+      const acc = (me.onGround ? 3600 : (att ? 800 : 1300)) * dt;
+      if (dir > 0) { if (me.vx < MAXRUN) me.vx = Math.min(MAXRUN, me.vx + acc); }
+      else if (me.vx > -MAXRUN) me.vx = Math.max(-MAXRUN, me.vx - acc);
+    } else if (me.onGround) {
+      const f = 3200 * dt;
+      me.vx = Math.abs(me.vx) <= f ? 0 : me.vx - Math.sign(me.vx) * f;
+    }
+    if (me.onGround && Math.abs(me.vx) > MAXRUN) me.vx -= Math.sign(me.vx) * 1800 * dt;
+
+    me.jumpBuf = Math.max(0, me.jumpBuf - dt);
+    me.coyote = me.onGround ? 0.1 : Math.max(0, me.coyote - dt);
+    if (me.jumpBuf > 0) {
+      if (me.coyote > 0) { me.vy = -JUMP; me.coyote = 0; me.jumpBuf = 0; me.onGround = false; }
+      else if (att && (me.wallL || me.wallR)) { me.vy = -JUMP * 0.9; me.vx += (me.wallL ? 1 : -1) * 280; me.jumpBuf = 0; }
+    }
+
+    me.vy = Math.min(1500, me.vy + GRAV * dt);
+    stepHook(dt);
+    if (mouse.down) tryShoot();
+
+    const px0 = me.x, py0 = me.y;
+    me.x += me.vx * dt; me.y += me.vy * dt;
+    collide(me);
+
+    const hh = me.hook;
+    if (hh && hh.state === 'att') {
+      let fixed = 0;
+      for (let i = 0; i < hh.pts.length - 1; i++) fixed += Math.hypot(hh.pts[i + 1][0] - hh.pts[i][0], hh.pts[i + 1][1] - hh.pts[i][1]);
+      const P = hh.pts[hh.pts.length - 1];
+      if (me.reel && keys.has('KeyF')) {
+        hh.L = Math.max(fixed + (hh.pts.length > 1 ? 6 : 36), hh.L - 540 * dt);
+        const ax = P[0] - me.x, ay = P[1] - me.y, ad = Math.hypot(ax, ay) || 1;
+        me.vx += (ax / ad) * 900 * dt; me.vy += (ay / ad) * 900 * dt;
+        const inward = me.vx * (ax / ad) + me.vy * (ay / ad);
+        if (inward > 720) { me.vx -= (ax / ad) * (inward - 720); me.vy -= (ay / ad) * (inward - 720); }
+      }
+      const free = Math.max(4, hh.L - fixed);
+      const dx = me.x - P[0], dy = me.y - P[1], d = Math.hypot(dx, dy);
+      if (d > free) {
+        const nx = dx / d, ny = dy / d;
+        me.x = P[0] + nx * free; me.y = P[1] + ny * free;
+        const vn = me.vx * nx + me.vy * ny;
+        if (vn > 0) { me.vx -= vn * nx; me.vy -= vn * ny; }
+      }
+      collide(me);
+      if (!updateRope(hh, px0, py0)) { me.hook = null; me.reel = false; me.hookCd = 0.15; pushPresence(true); }
+    }
+  }
+
+  function stepBullets(dt) {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i], dx = b.vx * dt, dy = b.vy * dt;
+      let tmin = 2;
+      for (const r of R) { const tt = rayRect(b.x, b.y, dx, dy, r); if (tt !== null && tt < tmin) tmin = tt; }
+      if (tmin <= 1) { b.x += dx * tmin; b.y += dy * tmin; sparks(b.x, b.y, b.col, 4); bullets.splice(i, 1); continue; }
+      b.x += dx; b.y += dy; b.life -= dt;
+      if (b.life <= 0) { bullets.splice(i, 1); continue; }
+      if (b.mine) {
+        if (dummyActive() && dummy.alive && Math.hypot(b.x - dummy.x, b.y - (dummy.y + 7)) < RAD + 9) { hitDummy(b); bullets.splice(i, 1); }
+      } else if (me.alive && me.inv <= 0 && Math.hypot(b.x - me.x, b.y - (me.y + 7)) < RAD + 9) {
+        hitMe(b); bullets.splice(i, 1);
+      }
+    }
+  }
+
+  function stepPlay(dt) {
+    me.fireCd = Math.max(0, me.fireCd - dt); me.hookCd = Math.max(0, me.hookCd - dt);
+    me.inv = Math.max(0, me.inv - dt); me.hurt = Math.max(0, me.hurt - dt); me.spawnAge += dt;
+    dummy.hurt = Math.max(0, dummy.hurt - dt);
+    if (!dummy.alive) { dummy.respawn -= dt; if (dummy.respawn <= 0) { dummy.alive = true; dummy.hp = 100; ring(dummy.x, dummy.y, '#9aa7b2'); } }
+    if (!me.alive) { me.respawnT -= dt; if (me.respawnT <= 0) spawnMe(); }
+    else movePlayer(dt);
+    stepBullets(dt);
+  }
+
+  /* ---------- drawing ---------- */
+  function rope(x1, y1, x2, y2, att) {
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x2, y2, att ? 5.5 : 4, 0, 6.2832);
+    ctx.fillStyle = att ? '#ffb020' : '#fff'; ctx.fill(); ctx.stroke();
+  }
+
+  /* Limbs: legs find the ground under each foot and step with the distance travelled; in the air they trail the motion
+     (so they swing out behind you on the rope). Arms are two-bone chains from the shoulders to both grips of the pistol. */
+  const BODY = 14, HIP_X = 5, HIP_Y = 8, LEGLEN = 12;
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function groundBelow(x, y, maxd) {
+    let best = y + maxd;
+    for (const r of R) if (x >= r.x && x <= r.x + r.w && r.y >= y - 2 && r.y < best) best = r.y;
+    return best;
+  }
+
+  function updateLegs(a, x, y, vx, vy, dt, forceAir) {
+    const hy = y + HIP_Y;
+    const gd = groundBelow(x, y + LEGOFF, 80) - (y + LEGOFF);
+    const grounded = !forceAir && gd <= 18 && vy > -150;
+    const dir = vx >= 0 ? 1 : -1;
+    const move = Math.min(1, Math.abs(vx) / 120);
+    if (grounded) a.phase += Math.abs(vx) * dt / 22 * Math.PI;
+    const k = a.init ? Math.min(1, dt * 40) : 1;
+    for (let i = 0; i < 2; i++) {
+      const hx = x + (i ? HIP_X : -HIP_X);
+      let tx, ty;
+      if (grounded) {
+        const ph = a.phase + i * Math.PI;
+        tx = hx + dir * -Math.cos(ph) * 11 * move;
+        ty = groundBelow(tx, hy, 40) - 2.5 - Math.max(0, Math.sin(ph)) * 6 * move;
+      } else {
+        tx = hx - clampN(vx * 0.03, -10, 10) + (i ? 2 : -2);
+        ty = hy + 15 + clampN(vy / 600, -1, 1) * 4 + (i ? 1.5 : -1.5);
+      }
+      a.f[i].x += (tx - x - a.f[i].x) * k;
+      a.f[i].y += (ty - y - a.f[i].y) * k;
+    }
+    a.init = true;
+  }
+
+  function twoBone(hx, hy, fx, fy, l1, l2, bx, by) {
+    let dx = fx - hx, dy = fy - hy, d = Math.hypot(dx, dy) || 1e-6;
+    const maxd = l1 + l2 - 0.05;
+    if (d > maxd) { fx = hx + dx / d * maxd; fy = hy + dy / d * maxd; dx = fx - hx; dy = fy - hy; d = maxd; }
+    const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+    const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+    const mx = hx + dx / d * a, my = hy + dy / d * a;
+    const px = -dy / d, py = dx / d;
+    const sg = (px * bx + py * by) >= 0 ? 1 : -1;
+    return { kx: mx + px * sg * h, ky: my + py * sg * h, fx, fy };
+  }
+
+  function limb(pts, col, w) {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.strokeStyle = INK; ctx.lineWidth = w + 3.5; ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+  }
+
+  function ropePoly(list, att) {
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(list[0][0], list[0][1]);
+    for (let i = 1; i < list.length; i++) ctx.lineTo(list[i][0], list[i][1]);
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    for (let i = 1; i < list.length - 1; i++) { ctx.beginPath(); ctx.arc(list[i][0], list[i][1], 3, 0, 6.2832); ctx.fill(); }
+    const e = list[list.length - 1];
+    ctx.beginPath(); ctx.arc(e[0], e[1], att ? 5.5 : 4, 0, 6.2832);
+    ctx.fillStyle = att ? '#ffb020' : '#fff'; ctx.fill(); ctx.stroke();
+  }
+
+  function drawBlob(x, y, col, aim, o) {
+    o = o || {};
+    const sca = o.scale == null ? 1 : o.scale;
+    const body = o.flash ? '#fff' : col;
+    const c = Math.cos(aim), s = Math.sin(aim), face = c >= 0 ? 1 : -1;
+    ctx.save();
+    ctx.globalAlpha = o.alpha == null ? 1 : o.alpha;
+    ctx.translate(x, y); ctx.scale(sca, sca);
+
+    if (o.anim) {
+      for (let i = 0; i < 2; i++) {
+        const hx = i ? HIP_X : -HIP_X, f = o.anim.f[i];
+        const ik = twoBone(hx, HIP_Y, f.x, f.y, LEGLEN, LEGLEN, face, 0);
+        limb([[hx, HIP_Y], [ik.kx, ik.ky], [ik.fx, ik.fy]], body, 3.6);
+        ctx.beginPath(); ctx.ellipse(ik.fx + face * 2, ik.fy + 0.5, 4.8, 3, 0, 0, 6.2832);
+        ctx.fillStyle = body; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+      }
+    }
+
+    const loc = (lx, ly) => { ly *= face; return [lx * c - ly * s, lx * s + ly * c]; };
+    const hA = loc(13, 6), hB = loc(27, 1.5), shA = loc(3, 4), shB = loc(2, -3);
+    const aA = twoBone(shA[0], shA[1], hA[0], hA[1], 10.5, 10.5, 0, 1);
+    const aB = twoBone(shB[0], shB[1], hB[0], hB[1], 13.5, 13.5, 0, 1);
+    limb([shB, [aB.kx, aB.ky], [aB.fx, aB.fy]], body, 3.4);
+    limb([shA, [aA.kx, aA.ky], [aA.fx, aA.fy]], body, 3.4);
+
+    ctx.beginPath(); ctx.arc(0, 0, BODY, 0, 6.2832);
+    ctx.fillStyle = body; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+    const px = -s, py = c;
+    for (const sd of [-1, 1]) {
+      const cx = c * 4.5 + px * sd * 5, cy = s * 4.5 + py * sd * 5 - 1;
+      ctx.beginPath(); ctx.arc(cx, cy, 4.1, 0, 6.2832); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx + c * 1.7, cy + s * 1.7, 1.9, 0, 6.2832); ctx.fillStyle = INK; ctx.fill();
+    }
+
+    ctx.save();
+    ctx.rotate(aim); if (face < 0) ctx.scale(1, -1);
+    ctx.fillStyle = INK; ctx.fillRect(9, -3.5, 23, 7); ctx.fillRect(9, 0, 7, 10);
+    ctx.fillStyle = '#5a6773'; ctx.fillRect(11, -3.5, 17, 2);
+    ctx.restore();
+
+    for (const hand of [aB, aA]) {
+      ctx.beginPath(); ctx.arc(hand.fx, hand.fy, 3.4, 0, 6.2832);
+      ctx.fillStyle = body; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+    }
+    ctx.restore();
+
+    if (o.hp != null) {
+      ctx.save(); ctx.globalAlpha = o.alpha == null ? 1 : o.alpha;
+      const bx = x - 19, by = y - RAD - 17;
+      ctx.fillStyle = INK; ctx.fillRect(bx, by, 38, 7);
+      ctx.fillStyle = o.hp <= 35 ? '#e5483d' : '#2fbf71'; ctx.fillRect(bx + 1.5, by + 1.5, 35 * Math.max(0, o.hp) / 100, 4);
+      if (o.name) { ctx.font = '700 12px "Space Grotesk", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(o.name, x, by - 5); }
+      ctx.restore();
+    }
+  }
+
+  function drawArena() {
+    ctx.fillStyle = ARENA; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(18,22,27,0.13)';
+    for (let gx = 48; gx < W; gx += 40) for (let gy = 48; gy < H; gy += 40) ctx.fillRect(gx, gy, 2, 2);
+    for (const r of R) {
+      ctx.fillStyle = INK; ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (r.w > 60 && r.y > 24 && r.y < 700) { ctx.fillStyle = '#3a4652'; ctx.fillRect(r.x, r.y, r.w, 5); }
+    }
+  }
+
+  const ambA = [newAnim(), newAnim()];
+  function drawAmbient() {
+    const swing = (ax, ay, len, phase, col, an) => {
+      const ph = t * 1.5 + phase, ang = Math.sin(ph) * 0.95, w = Math.cos(ph) * 0.95 * 1.5;
+      const px = ax + Math.sin(ang) * len, py = ay + Math.cos(ang) * len;
+      rope(ax, ay, px, py, true);
+      updateLegs(an, px, py, Math.cos(ang) * len * w, -Math.sin(ang) * len * w, dtFrame, true);
+      drawBlob(px, py, col, Math.cos(ph) > 0 ? 0 : Math.PI, { anim: an });
+    };
+    swing(378, 154, 300, 0, COLORS[0], ambA[0]);
+    swing(902, 154, 300, 2.2, COLORS[4], ambA[1]);
+  }
+
+  function drawPlay() {
+    if (dummyActive() && dummy.alive) {
+      updateLegs(dummy.anim, dummy.x, dummy.y, 0, 0, dtFrame);
+      drawBlob(dummy.x, dummy.y, '#9aa7b2', Math.PI, { hp: dummy.hp, name: 'Practice dummy', flash: dummy.hurt > 0, anim: dummy.anim });
+    }
+    for (const r of remotes.values()) {
+      if (!r.alive) continue;
+      if (r.hk) {
+        const list = [[r.x, r.y]], pv = r.hk[3] || [];
+        for (let i = pv.length - 2; i >= 0; i -= 2) list.push([pv[i], pv[i + 1]]);
+        list.push([r.hk[0], r.hk[1]]);
+        ropePoly(list, r.hk[2] === 1);
+      }
+    }
+    if (me.alive && me.hook) {
+      const hk = me.hook, att = hk.state === 'att' && hk.pts;
+      ropePoly([[me.x, me.y]].concat(att ? hk.pts.slice().reverse() : [[hk.x, hk.y]]), !!att);
+    }
+    for (const r of remotes.values()) {
+      if (!r.alive) continue;
+      updateLegs(r.anim, r.x, r.y, r.vx, r.vy, dtFrame);
+      drawBlob(r.x, r.y, r.col, r.aim, { hp: r.hp, name: r.name, anim: r.anim });
+    }
+    if (me.alive) {
+      const grow = Math.min(1, me.spawnAge / 0.35);
+      const blink = me.inv > 0 && Math.floor(t * 14) % 2 === 0 ? 0.45 : 1;
+      updateLegs(me.anim, me.x, me.y, me.vx, me.vy, dtFrame);
+      drawBlob(me.x, me.y, COLORS[me.color], me.aim, { hp: me.hp, name: me.name, scale: 0.2 + 0.8 * grow, alpha: blink, flash: me.hurt > 0, anim: me.anim });
+    }
+    for (const b of bullets) {
+      ctx.strokeStyle = b.col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(b.x - b.vx * 0.018, b.y - b.vy * 0.018); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, 6.2832); ctx.fillStyle = b.col; ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = INK; ctx.stroke();
+    }
+  }
+
+  function drawReticle() {
+    if (mouse.x < 0 || mouse.x > W || mouse.y < 0 || mouse.y > H) return;
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 9, 0, 6.2832); ctx.stroke();
+    ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 1.8, 0, 6.2832); ctx.fillStyle = INK; ctx.fill();
+  }
+
+  function render() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, vw, vh);
+    ctx.save();
+    ctx.translate(offX, offY); ctx.scale(sc, sc);
+    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    drawArena();
+    if (state === 'menu') drawAmbient(); else drawPlay();
+    drawParts();
+    if (state === 'play' && me.alive) drawReticle();
+    ctx.restore();
+    if (state === 'menu') { ctx.fillStyle = 'rgba(215,227,232,0.6)'; ctx.fillRect(0, 0, vw, vh); }
+  }
+
+  /* ---------- hud / menu ---------- */
+  const hpFill = $('hpFill'), hpText = $('hpText'), kd = $('kd'), boardEl = $('board'), feedEl = $('feed'), cmsg = $('cmsg');
+
+  function updateHud() {
+    hpFill.style.width = Math.max(0, me.hp) + '%';
+    hpFill.dataset.low = me.hp <= 35 ? '1' : '0';
+    hpText.textContent = 'Health ' + Math.max(0, me.hp);
+    kd.textContent = 'Kills ' + me.kills + '  ·  Deaths ' + me.deaths;
+
+    const rows = [{ n: me.name, k: me.kills, d: me.deaths, me: true }];
+    for (const r of remotes.values()) rows.push({ n: r.name, k: r.k || 0, d: r.d || 0, me: false });
+    rows.sort((a, b) => b.k - a.k || a.d - b.d);
+    const lis = rows.map((row) => {
+      const li = document.createElement('li');
+      if (row.me) li.className = 'me';
+      const a = document.createElement('span'); a.className = 'nm'; a.textContent = row.n + (row.me ? ' (you)' : '');
+      const b = document.createElement('span'); b.className = 'sc'; b.textContent = row.k + ' / ' + row.d;
+      li.append(a, b); return li;
+    });
+    boardEl.replaceChildren(...lis);
+
+    while (feed.length && t - feed[0].at > 5) feed.shift();
+    feedEl.replaceChildren(...feed.map((f) => { const li = document.createElement('li'); li.textContent = f.text; return li; }));
+
+    if (!me.alive && state === 'play') {
+      cmsg.hidden = false;
+      cmsg.textContent = 'Shot by ' + me.killerName + '. Back in ' + Math.max(1, Math.ceil(me.respawnT));
+    } else cmsg.hidden = true;
+  }
+
+  function refreshStatus() {
+    const el = $('status');
+    let n = 0;
+    if (room) for (const p of room.peers()) if (!p.sameTab && p.kind === 'viewer' && p.presence && p.presence.g === 1) n++;
+    const live = !!room && room.connected();
+    el.dataset.live = live ? '1' : '0';
+    el.textContent = !room ? 'Practice mode only: live fights are not available in this view'
+      : !live ? 'Connecting to the arena…'
+      : n === 0 ? 'The arena is empty. Start to drop in.'
+      : n + (n === 1 ? ' player' : ' players') + ' in the arena right now';
+  }
+
+  /* ---------- flow ---------- */
+  const menuEl = $('menu'), hudEl = $('hud'), nameIn = $('nameIn'), hintEl = $('hint');
+
+  function startGame() {
+    if (state === 'play') return;
+    me.name = cleanName(nameIn.value) || 'Blob';
+    if (!nameIn.value.trim()) me.name = 'Blob' + (100 + Math.floor(Math.random() * 900));
+    try { localStorage.setItem('gg-name', nameIn.value.trim()); } catch (e) { /* storage unavailable */ }
+    remotes.clear(); bullets.length = 0; parts.length = 0; feed.length = 0;
+    myPeer = null;
+    if (room) {
+      for (const p of room.peers()) if (p.sameTab) myPeer = p.peer;
+      const used = new Set();
+      for (const p of room.peers()) if (!p.sameTab && p.presence && p.presence.g === 1) used.add(num(p.presence.c, -1));
+      const free = COLORS.map((_, i) => i).filter((i) => !used.has(i));
+      const pool = free.length ? free : COLORS.map((_, i) => i);
+      me.color = pool[Math.floor(Math.random() * pool.length)];
+    } else me.color = Math.floor(Math.random() * COLORS.length);
+    me.kills = 0; me.deaths = 0; me.bullets = []; me.hits = []; me.lastKiller = '';
+    state = 'play';
+    menuEl.hidden = true; hudEl.hidden = false;
+    cv.style.cursor = 'none';
+    hintEl.classList.remove('fade'); void hintEl.offsetWidth; hintEl.classList.add('fade');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    acc = 0; spawnMe();
+    syncRemote(0);
+  }
+
+  function leaveGame() {
+    if (state !== 'play') return;
+    state = 'menu';
+    me.hook = null; me.alive = false; mouse.down = false; keys.clear();
+    if (room) room.presence({ g: 0, hk: null, al: 0 }).catch(() => {});
+    remotes.clear(); bullets.length = 0;
+    menuEl.hidden = false; hudEl.hidden = true;
+    cv.style.cursor = 'default';
+    refreshStatus();
+  }
+
+  /* ---------- input ---------- */
+  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyF', 'KeyE']);
+  const JUMP_KEYS = new Set(['KeyW', 'Space', 'ArrowUp']);
+
+  window.addEventListener('keydown', (e) => {
+    if (state === 'menu') {
+      if (e.code === 'Enter' && e.target !== $('startBtn')) { e.preventDefault(); startGame(); }
+      return;
+    }
+    if (e.code === 'Escape') { leaveGame(); return; }
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
+    if (e.repeat) return;
+    keys.add(e.code);
+    if (JUMP_KEYS.has(e.code)) me.jumpBuf = 0.12;
+    if (me.alive) {
+      if (e.code === 'KeyF') { if (!me.hook) fireHook(); else if (me.hook.state === 'att') me.reel = true; }
+      else if (e.code === 'KeyE' && me.hook) releaseHook();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    keys.delete(e.code);
+    if (e.code === 'KeyF') me.reel = false;
+    if (JUMP_KEYS.has(e.code) && me.vy < -280) me.vy = -280;
+  });
+  window.addEventListener('blur', () => { keys.clear(); mouse.down = false; });
+  window.addEventListener('mousemove', setMouse);
+  window.addEventListener('mousedown', (e) => {
+    if (state !== 'play') return;
+    setMouse(e);
+    if (e.button === 0) { mouse.down = true; e.preventDefault(); }
+  });
+  window.addEventListener('mouseup', (e) => { if (e.button === 0) mouse.down = false; });
+  window.addEventListener('contextmenu', (e) => { if (state === 'play') e.preventDefault(); });
+  $('startBtn').addEventListener('click', startGame);
+
+  /* ---------- loop ---------- */
+  function frame(now) {
+    const dtF = Math.min(0.05, (now - last) / 1000);
+    last = now; t += dtF; dtFrame = dtF;
+    if (state === 'play') {
+      acc += dtF;
+      while (acc >= STEP) { stepPlay(STEP); acc -= STEP; }
+      syncRemote(dtF);
+      pushPresence(false);
+      if (now - lastHud > 120) { lastHud = now; updateHud(); }
+    } else if (now - lastStatus > 1000) { lastStatus = now; refreshStatus(); }
+    updateParts(dtF);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- standalone networking ----------
+     Hosted on Render (not inside claude.ai) there is no room capability, so this gives the game the same small interface
+     (presence / peers / onPeers / connected / onConnection) on top of a WebSocket to server.js. */
+  function createSocketRoom() {
+    if (!location.host || typeof WebSocket === 'undefined') return null;
+    const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    const peerH = new Set(), connH = new Set();
+    const local = {};
+    let ws = null, myId = null, isUp = false, peerList = [], tries = 0;
+    const tellPeers = () => { for (const f of peerH) { try { f({ peers: peerList, joined: [], left: [], updated: [] }); } catch (e) { /* listener error */ } } };
+    const tellConn = () => { for (const f of connH) { try { f(isUp); } catch (e) { /* listener error */ } } };
+    function connect() {
+      ws = new WebSocket(url);
+      ws.onopen = () => { isUp = true; tries = 0; tellConn(); if (Object.keys(local).length) ws.send(JSON.stringify({ t: 'p', d: local })); };
+      ws.onmessage = (ev) => {
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'hello') myId = m.id;
+        else if (m.t === 's' && Array.isArray(m.peers)) {
+          peerList = m.peers.map((q) => ({ peer: q.id, by: null, isMe: q.id === myId, sameTab: q.id === myId, kind: 'viewer', guest: false, presence: q.p || {}, updatedAt: Date.now() }));
+          tellPeers();
+        }
+      };
+      ws.onclose = () => { isUp = false; peerList = []; tellConn(); tellPeers(); setTimeout(connect, Math.min(5000, 400 * Math.pow(2, tries++))); };
+      ws.onerror = () => { try { ws.close(); } catch (e) { /* already closed */ } };
+    }
+    connect();
+    return {
+      presence(patch) {
+        for (const k in patch) { if (patch[k] === null) delete local[k]; else local[k] = patch[k]; }
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'p', d: patch }));
+        return Promise.resolve();
+      },
+      peers: () => peerList,
+      onPeers(f) { peerH.add(f); return () => peerH.delete(f); },
+      connected: () => isUp,
+      onConnection(f) { connH.add(f); f(isUp); return () => connH.delete(f); }
+    };
+  }
+
+  /* ---------- boot ---------- */
+  try { const saved = localStorage.getItem('gg-name'); if (saved) nameIn.value = cleanName(saved); } catch (e) { /* storage unavailable */ }
+  resize();
+  refreshStatus();
+  requestAnimationFrame(frame);
+
+  (async () => {
+    try {
+      if (window.claude && typeof window.claude.use === 'function') room = await window.claude.use('room');
+      else room = createSocketRoom();
+    } catch (e) { room = null; }
+    if (room) {
+      room.onPeers(() => { if (state === 'menu') refreshStatus(); });
+      room.onConnection(() => { if (state === 'menu') refreshStatus(); });
+    }
+    refreshStatus();
+  })();
+})();
+</script>
+
+</body>
+</html>

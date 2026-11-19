@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: grapple-gatling
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz

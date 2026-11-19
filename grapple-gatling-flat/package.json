@@ -1,0 +1,9 @@
+{
+  "name": "grapple-gatling",
+  "version": "1.0.0",
+  "description": "Grapple Gatling: a 2D grappling-hook arena shooter with live multiplayer",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
