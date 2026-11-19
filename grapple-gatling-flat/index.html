@@ -112,8 +112,8 @@ kbd {
         <li><kbd>A</kbd><kbd>D</kbd> move</li>
         <li><kbd>W</kbd> / <kbd>Space</kbd> jump</li>
         <li><kbd>Left click</kbd> shoot</li>
-        <li><kbd>F</kbd> fire the hook, then hold <kbd>F</kbd> to reel in</li>
-        <li><kbd>E</kbd> let go of the hook</li>
+        <li><kbd>F</kbd> fire the hook, <kbd>F</kbd> again to let go</li>
+        <li>On the rope: <kbd>W</kbd> / <kbd>&uarr;</kbd> reel in, <kbd>S</kbd> / <kbd>&darr;</kbd> let out</li>
         <li><kbd>Esc</kbd> back to menu</li>
       </ul>
     </div>
@@ -130,7 +130,7 @@ kbd {
       <ul id="feed"></ul>
     </div>
     <div id="cmsg" class="cmsg" hidden></div>
-    <div id="hint" class="hint">Aim with the mouse. Left click shoots. F fires the hook, then hold F to reel in. E lets go. Esc leaves.</div>
+    <div id="hint" class="hint">Aim with the mouse. Left click shoots. F fires the hook, F again lets go. On the rope, W or Up reels in, S or Down lets rope out. Esc leaves.</div>
   </section>
 </div>
 
@@ -563,7 +563,9 @@ kbd {
       let fixed = 0;
       for (let i = 0; i < hh.pts.length - 1; i++) fixed += Math.hypot(hh.pts[i + 1][0] - hh.pts[i][0], hh.pts[i + 1][1] - hh.pts[i][1]);
       const P = hh.pts[hh.pts.length - 1];
-      if (me.reel && keys.has('KeyF')) {
+      const ropeUp = keys.has('KeyW') || keys.has('ArrowUp'), ropeDown = keys.has('KeyS') || keys.has('ArrowDown');
+      if (ropeDown && !ropeUp) hh.L = Math.min(fixed + 640, hh.L + 420 * dt);
+      if (ropeUp && !ropeDown) {
         hh.L = Math.max(fixed + (hh.pts.length > 1 ? 6 : 36), hh.L - 540 * dt);
         const ax = P[0] - me.x, ay = P[1] - me.y, ad = Math.hypot(ax, ay) || 1;
         me.vx += (ax / ad) * 900 * dt; me.vy += (ay / ad) * 900 * dt;
@@ -906,7 +908,7 @@ kbd {
   }
 
   /* ---------- input ---------- */
-  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyF', 'KeyE']);
+  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyF']);
   const JUMP_KEYS = new Set(['KeyW', 'Space', 'ArrowUp']);
 
   window.addEventListener('keydown', (e) => {
@@ -918,16 +920,14 @@ kbd {
     if (GAME_KEYS.has(e.code)) e.preventDefault();
     if (e.repeat) return;
     keys.add(e.code);
-    if (JUMP_KEYS.has(e.code)) me.jumpBuf = 0.12;
+    if (JUMP_KEYS.has(e.code) && !(me.hook && (e.code === 'KeyW' || e.code === 'ArrowUp'))) me.jumpBuf = 0.12;
     if (me.alive) {
-      if (e.code === 'KeyF') { if (!me.hook) fireHook(); else if (me.hook.state === 'att') me.reel = true; }
-      else if (e.code === 'KeyE' && me.hook) releaseHook();
+      if (e.code === 'KeyF') { if (!me.hook) fireHook(); else releaseHook(); }
     }
   });
   window.addEventListener('keyup', (e) => {
     keys.delete(e.code);
-    if (e.code === 'KeyF') me.reel = false;
-    if (JUMP_KEYS.has(e.code) && me.vy < -280) me.vy = -280;
+    if (JUMP_KEYS.has(e.code) && !me.hook && me.vy < -280) me.vy = -280;
   });
   window.addEventListener('blur', () => { keys.clear(); mouse.down = false; });
   window.addEventListener('mousemove', setMouse);
