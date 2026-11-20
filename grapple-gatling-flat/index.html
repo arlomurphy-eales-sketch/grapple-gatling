@@ -93,6 +93,67 @@ kbd {
   .start, .start:hover, .start:active { transition: none; }
   .hint.fade { animation-duration: 0.01s; }
 }
+
+/* ---- v2: server list, match HUD, ammo, cards ---- */
+.head { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.online { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1rem; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 5px 16px; }
+.online i { width: 10px; height: 10px; border-radius: 50%; background: #9aa7b2; flex: none; }
+.online[data-live="1"] i { background: #2fbf71; }
+.servers { pointer-events: auto; width: min(580px, calc(100vw - 32px)); background: rgba(244, 248, 250, 0.94); border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px 14px; display: grid; gap: 10px; box-shadow: 0 5px 0 var(--ink); }
+.srv-head { display: flex; justify-content: space-between; gap: 10px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.srv-row { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.srv-row .dot { width: 10px; height: 10px; border-radius: 50%; background: #9aa7b2; flex: none; }
+.srv-row .dot[data-live="1"] { background: #2fbf71; }
+.srv-info { flex: 1 1 170px; min-width: 0; }
+.srv-info b { display: block; font-size: 1.05rem; }
+.srv-info small { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+.start.sm { font-size: 1.2rem; padding: 0.6em 1.5em 0.66em; box-shadow: 0 4px 0 #3b4650; border-radius: 10px; }
+.start.sm:hover { box-shadow: 0 6px 0 #3b4650; }
+.start.sm:active { box-shadow: 0 1px 0 #3b4650; }
+.start:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 #3b4650; }
+.ghost { pointer-events: auto; cursor: pointer; background: transparent; color: var(--ink); border: 2px solid var(--ink); border-radius: 10px; padding: 0.55em 1.2em; font: 700 0.95rem var(--ui); }
+.ghost:hover { background: var(--paper); }
+.ghost:focus-visible, .card:focus-visible { outline: 3px solid #3e7bfa; outline-offset: 3px; }
+
+.hud { grid-template-columns: 1fr auto 1fr; }
+.hud-tl { grid-column: 1; grid-row: 1; }
+.hud-tc { grid-column: 2; grid-row: 1; justify-self: center; display: grid; gap: 8px; justify-items: center; min-width: 0; }
+.hud-tr { grid-column: 3; grid-row: 1; justify-self: end; }
+.cmsg { grid-column: 1 / -1; grid-row: 2; white-space: pre-line; }
+.hint { grid-column: 1 / span 2; grid-row: 3; justify-self: start; align-self: end; text-align: left; }
+.matchbar { display: grid; justify-items: center; gap: 2px; padding: 8px 18px; }
+.mb-score { display: flex; align-items: center; gap: 14px; font-weight: 700; }
+.mb-score b { font-family: var(--display); font-weight: 400; font-size: 1.7rem; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.mb-score span { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-info { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.banner { font-weight: 700; font-size: 0.9rem; text-align: center; }
+.ammo { grid-column: 3; grid-row: 3; justify-self: end; align-self: end; width: 210px; display: grid; gap: 7px; }
+.ammo-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+#gunName { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+#ammoNum { font-family: var(--display); font-weight: 400; font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.pips { display: flex; gap: 5px; }
+.pips i { flex: 1; height: 12px; border: 2px solid var(--ink); border-radius: 3px; background: #fff; }
+.pips i.on { background: #ffb020; }
+.ammo-msg { min-height: 1.15em; font-size: 0.82rem; font-weight: 700; }
+.ammo[data-empty="1"] { border-color: var(--coral); box-shadow: 0 0 0 2px var(--coral); }
+.ammo[data-empty="1"] .ammo-msg { color: #c8362b; }
+.rl { height: 8px; border: 2px solid var(--ink); border-radius: 5px; background: #fff; overflow: hidden; }
+.rl i { display: block; height: 100%; width: 0; background: #3e7bfa; }
+
+.overlay { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 22px; text-align: center; background: rgba(215, 227, 232, 0.8); padding: 20px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); }
+.ov-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(1.7rem, 5vw, 3rem); text-shadow: 0.05em 0.06em 0 var(--coral); text-wrap: balance; }
+.ov-sub { margin: 0; font-weight: 700; color: var(--ink-soft); }
+.cardrow { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+.card { cursor: pointer; width: 206px; min-height: 262px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 7px 0 var(--ink); padding: 14px 14px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; font: inherit; color: var(--ink); transition: transform 0.08s ease, box-shadow 0.08s ease; }
+.card:hover { transform: translateY(-6px); box-shadow: 0 13px 0 var(--ink); }
+.card .ico { width: 82px; height: 82px; color: var(--cc); }
+.card b { font-family: var(--display); font-weight: 400; font-size: 1.4rem; }
+.card .txt { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.38; }
+.card[data-card="shotgun"] { --cc: #ff5a4e; }
+.card[data-card="poison"] { --cc: #5fae2c; }
+.card[data-card="shield"] { --cc: #3e7bfa; }
+.resbtns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .card, .card:hover { transition: none; } }
 </style>
 
 </head>
@@ -101,10 +162,21 @@ kbd {
   <canvas id="cv"></canvas>
 
   <section id="menu" class="layer menu">
-    <h1 class="title">Grapple Gatling</h1>
+    <div class="head">
+      <h1 class="title">Grapple Gatling</h1>
+      <p id="online" class="online" data-live="0"><i></i><span id="onlineText">Connecting…</span></p>
+    </div>
     <div class="center">
-      <button id="startBtn" class="start" type="button">Start</button>
+      <div class="servers">
+        <div class="srv-head"><span>Servers</span><span id="srvTotals"></span></div>
+        <div class="srv-row">
+          <span id="srvDot" class="dot" data-live="0"></span>
+          <div class="srv-info"><b>Global arena</b><small>1v1 · first to 3 points</small></div>
+          <button id="playBtn" class="start sm" type="button" disabled>Quick Play</button>
+        </div>
+      </div>
       <label class="namebox"><span>Name</span><input id="nameIn" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Blob"></label>
+      <button id="practiceBtn" class="ghost" type="button">Practice alone</button>
     </div>
     <div class="foot">
       <p id="status" data-live="0"></p>
@@ -112,6 +184,7 @@ kbd {
         <li><kbd>A</kbd><kbd>D</kbd> move</li>
         <li><kbd>W</kbd> / <kbd>Space</kbd> jump</li>
         <li><kbd>Left click</kbd> shoot</li>
+        <li><kbd>R</kbd> reload (6 shots)</li>
         <li><kbd>F</kbd> fire the hook, <kbd>F</kbd> again to let go</li>
         <li>On the rope: <kbd>W</kbd> / <kbd>&uarr;</kbd> reel in, <kbd>S</kbd> / <kbd>&darr;</kbd> let out</li>
         <li><kbd>Esc</kbd> back to menu</li>
@@ -125,12 +198,62 @@ kbd {
       <div id="hpText"></div>
       <div id="kd"></div>
     </div>
+    <div class="hud-tc">
+      <div id="matchbar" class="panel matchbar" hidden>
+        <div class="mb-score"><span id="mbL"></span><b id="mbS"></b><span id="mbR"></span></div>
+        <div id="mbInfo" class="mb-info"></div>
+      </div>
+      <div id="banner" class="panel banner" hidden></div>
+    </div>
     <div class="hud-tr">
-      <div class="panel"><ol id="board"></ol></div>
+      <div id="boardBox" class="panel"><ol id="board"></ol></div>
       <ul id="feed"></ul>
     </div>
     <div id="cmsg" class="cmsg" hidden></div>
-    <div id="hint" class="hint">Aim with the mouse. Left click shoots. F fires the hook, F again lets go. On the rope, W or Up reels in, S or Down lets rope out. Esc leaves.</div>
+    <div id="hint" class="hint">Aim with the mouse. Left click shoots, R reloads. F fires the hook, F again lets go. On the rope, W or Up reels in, S or Down lets rope out.</div>
+    <div id="ammo" class="panel ammo">
+      <div class="ammo-top"><span id="gunName">Pistol</span><b id="ammoNum">6 / 6</b></div>
+      <div id="pips" class="pips"></div>
+      <div id="ammoMsg" class="ammo-msg"></div>
+      <div id="rlBar" class="rl" hidden><i id="rlFill"></i></div>
+    </div>
+  </section>
+
+  <section id="cards" class="overlay" hidden>
+    <h2 class="ov-title">Pick an upgrade</h2>
+    <p class="ov-sub">You lost the point. Choose one, it lasts the whole match.</p>
+    <div class="cardrow">
+      <button class="card" type="button" data-card="shotgun">
+        <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><g fill="currentColor" stroke="#12161b" stroke-width="3" stroke-linejoin="round"><rect x="4" y="22" width="44" height="9" rx="2"/><rect x="4" y="33" width="38" height="8" rx="2"/><path d="M40 33 L60 46 L52 52 L36 42 Z"/></g></svg>
+        <b>Shotgun</b><span class="txt">Fires a spread of 6 pellets. Brutal up close, slower to fire. Pick it again for 2 more pellets.</span><kbd>1</kbd>
+      </button>
+      <button class="card" type="button" data-card="poison">
+        <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><g fill="currentColor" stroke="#12161b" stroke-width="3" stroke-linejoin="round"><path d="M32 6 C32 6 13 28 13 41 a19 19 0 0 0 38 0 C51 28 32 6 32 6 Z"/></g><path d="M24 40 a9 9 0 0 0 7 9" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg>
+        <b>Poison shots</b><span class="txt">Every hit poisons them, draining health for 3 seconds after. Stacks stronger each time you pick it.</span><kbd>2</kbd>
+      </button>
+      <button class="card" type="button" data-card="shield">
+        <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><g fill="currentColor" stroke="#12161b" stroke-width="3" stroke-linejoin="round"><path d="M32 5 L55 13 V32 C55 46 45 56 32 61 C19 56 9 46 9 32 V13 Z"/></g><path d="M32 22 V44 M21 33 H43" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>
+        <b>Shield</b><span class="txt">+25 max health, topped up at the start of every round. Stacks.</span><kbd>3</kbd>
+      </button>
+    </div>
+  </section>
+
+  <section id="result" class="overlay" hidden>
+    <h2 id="resTitle" class="ov-title"></h2>
+    <p id="resSub" class="ov-sub"></p>
+    <div class="resbtns">
+      <button id="againBtn" class="start sm" type="button">Play again</button>
+      <button id="menuBtn" class="ghost" type="button">Main menu</button>
+    </div>
+  </section>
+
+  <section id="leave" class="overlay" hidden>
+    <h2 class="ov-title">Leave the match?</h2>
+    <p class="ov-sub">Your opponent gets the win.</p>
+    <div class="resbtns">
+      <button id="leaveYes" class="ghost" type="button">Leave</button>
+      <button id="leaveNo" class="start sm" type="button">Keep playing</button>
+    </div>
   </section>
 </div>
 
@@ -144,7 +267,7 @@ kbd {
   const COLORS = ['#ff5a4e', '#ffb020', '#7bc043', '#19b5a5', '#3e7bfa', '#8a5cf6', '#f25ca8', '#ff8a3d'];
   const GRAV = 1700, JUMP = 720, MAXRUN = 330;
   const HOOK_SPEED = 1800, HOOK_RANGE = 620;
-  const BULLET_SPEED = 1150, FIRE_CD = 0.26, DMG = 20;
+  const MAX_AMMO = 6, RELOAD_T = 1.2, WIN_SCORE = 3;
 
   /* Arena, hand-placed. Outer walls are 24px thick so the hook can bite into them. */
   const R = [
@@ -159,6 +282,7 @@ kbd {
   ];
   const LEGOFF = 14; /* body is a two-circle capsule so the legs have room under the torso */
   const SPAWNS = [[80, 632], [1200, 632], [225, 508], [1055, 508], [640, 398], [285, 278], [995, 278], [640, 168]];
+  const MATCH_SPAWNS = [[150, 632], [1130, 632]];
 
   /* ---------- helpers ---------- */
   const $ = (id) => document.getElementById(id);
@@ -282,6 +406,9 @@ kbd {
   let dpr = 1, vw = 0, vh = 0, sc = 1, offX = 0, offY = 0;
   let room = null, myPeer = null;
   let state = 'menu';
+  let mode = 'practice';   /* practice | queue | match */
+  let net = null;          /* the game server connection; null where there is no server (the claude.ai preview) */
+  let menuNote = '';
   let last = performance.now(), acc = 0, t = 0, lastPush = 0, lastHud = 0, lastStatus = 0, dtFrame = 0.016;
 
   const newAnim = () => ({ phase: 0, f: [{ x: -5, y: 22 }, { x: 5, y: 22 }], init: false });
@@ -292,14 +419,20 @@ kbd {
   const remotes = new Map();
   const feed = [];
 
+  const stats = { online: 0, q: 0, m: 0 };
+  const match = { id: '', side: 0, opp: { id: '', name: '', color: 4 }, scores: {}, round: 0, phase: 'idle', cdLeft: 0, goFlash: 0, pointText: '', picking: false };
   const me = {
     x: 640, y: 600, vx: 0, vy: 0, hp: 100, alive: false, aim: 0,
     onGround: false, wallL: false, wallR: false, coyote: 0, jumpBuf: 0, fireCd: 0, hookCd: 0,
-    inv: 0, hurt: 0, spawnAge: 1, respawnT: 0, kills: 0, deaths: 0, bid: 0, reel: false, anim: newAnim(),
+    inv: 0, hurt: 0, spawnAge: 1, respawnT: 0, kills: 0, deaths: 0, bid: 0, anim: newAnim(),
+    ammo: MAX_AMMO, reload: 0, dry: 0, ups: { shotgun: 0, poison: 0, shield: 0 }, poison: { t: 0, dps: 0, by: '' },
     bullets: [], hits: [], color: 0, name: 'Blob', hook: null, lastKiller: '', killerName: ''
   };
   const dummy = { x: 1055, y: 508, hp: 100, alive: true, respawn: 0, hurt: 0, anim: newAnim() };
-  const dummyActive = () => state === 'play' && remotes.size === 0;
+  const dummyActive = () => state === 'play' && mode !== 'match' && remotes.size === 0;
+  const maxHp = () => 100 + 25 * me.ups.shield;
+  const locked = () => mode === 'match' && match.phase !== 'fight';
+  const fighting = () => mode !== 'match' || match.phase === 'fight';
 
   /* ---------- sizing ---------- */
   function resize() {
@@ -352,9 +485,9 @@ kbd {
     ctx.globalAlpha = 1;
   }
 
-  /* ---------- networking (room presence carries everything) ---------- */
+  /* ---------- networking (the opponent's state arrives as presence) ---------- */
   function pushPresence(force) {
-    if (!room) return;
+    if (!room || (net && mode !== 'match')) return;
     const now = performance.now();
     if (!force && now - lastPush < 50) return;
     lastPush = now;
@@ -364,7 +497,8 @@ kbd {
     room.presence({
       g: 1, n: me.name, c: me.color,
       x: r1(me.x), y: r1(me.y), vx: Math.round(me.vx), vy: Math.round(me.vy), a: Math.round(me.aim * 100) / 100,
-      hp: me.hp, al: me.alive ? 1 : 0, k: me.kills, d: me.deaths, lk: me.lastKiller || '',
+      hp: Math.round(me.hp), mh: maxHp(), al: me.alive ? 1 : 0, d: me.deaths,
+      gn: me.ups.shotgun > 0 ? 1 : 0, pz: me.poison.t > 0 ? 1 : 0,
       hk: h ? [Math.round(h.x), Math.round(h.y), h.state === 'att' ? 1 : 0, piv] : null,
       b: me.bullets, ht: me.hits
     }).catch(() => {});
@@ -372,6 +506,7 @@ kbd {
 
   function nameOfPeer(id) {
     if (id && id === myPeer) return me.name;
+    if (id && id === match.opp.id) return match.opp.name;
     const r = remotes.get(id);
     return r ? r.name : 'Someone';
   }
@@ -401,12 +536,12 @@ kbd {
       if (!r) {
         let maxId = 0;
         if (Array.isArray(s.b)) for (const b of s.b) if (Array.isArray(b)) maxId = Math.max(maxId, num(b[0], 0));
-        r = { id: p.peer, x: px, y: py, vx: 0, vy: 0, anim: newAnim(), seenB: maxId, lastD: num(s.d, 0), alive: s.al === 1 };
+        r = { id: p.peer, x: px, y: py, vx: 0, vy: 0, anim: newAnim(), seenB: maxId, alive: s.al === 1 };
         remotes.set(p.peer, r);
         if (r.alive) ring(px, py, colorOf(s.c));
       }
-      r.name = cleanName(s.n); r.col = colorOf(s.c); r.aim = num(s.a, 0); r.hp = num(s.hp, 100); r.vx = num(s.vx, 0); r.vy = num(s.vy, 0);
-      r.k = num(s.k, 0); r.d = num(s.d, 0);
+      r.name = cleanName(s.n); r.col = colorOf(s.c); r.aim = num(s.a, 0); r.vx = num(s.vx, 0); r.vy = num(s.vy, 0);
+      r.hp = num(s.hp, 100); r.mh = Math.max(1, num(s.mh, 100)); r.gn = s.gn === 1 ? 1 : 0; r.pz = s.pz === 1;
       const was = r.alive; r.alive = s.al === 1;
       if (!was && r.alive) { r.x = px; r.y = py; ring(px, py, r.col); }
       const k = Math.min(1, dt * 18);
@@ -420,7 +555,10 @@ kbd {
           const id = num(b[0], 0);
           if (id > r.seenB) {
             r.seenB = id;
-            bullets.push({ key: p.peer + ':' + id, owner: p.peer, mine: false, x: num(b[1]), y: num(b[2]), vx: num(b[3]), vy: num(b[4]), life: 1.2, col: r.col });
+            bullets.push({
+              key: p.peer + ':' + id, owner: p.peer, mine: false, x: num(b[1]), y: num(b[2]), vx: num(b[3]), vy: num(b[4]),
+              dmg: clampN(num(b[5], 20), 0, 40), pz: clampN(Math.floor(num(b[6], 0)), 0, 6), life: clampN(num(b[7], 12), 1, 15) / 10, col: r.col
+            });
           }
         }
       }
@@ -432,17 +570,15 @@ kbd {
         }
         removeBulletKeys(mapped);
       }
-      if (r.d > r.lastD) {
-        r.lastD = r.d;
-        const killer = typeof s.lk === 'string' ? s.lk : '';
-        if (killer && killer === myPeer) { me.kills++; pushPresence(true); }
-        if (killer) addFeed(nameOfPeer(killer) + ' shot ' + r.name);
-      }
     }
     for (const id of Array.from(remotes.keys())) if (!seen.has(id)) remotes.delete(id);
   }
 
   /* ---------- gameplay ---------- */
+  function refill() {
+    me.ammo = MAX_AMMO; me.reload = 0; me.dry = 0; me.poison = { t: 0, dps: 0, by: '' };
+  }
+
   function spawnMe() {
     const others = [];
     for (const r of remotes.values()) if (r.alive) others.push(r);
@@ -455,29 +591,47 @@ kbd {
       if (md > bd) { bd = md; best = s; }
     }
     me.x = best[0]; me.y = best[1]; me.vx = 0; me.vy = 0;
-    me.hp = 100; me.alive = true; me.inv = 1.4; me.hook = null; me.fireCd = 0.3; me.hookCd = 0; me.spawnAge = 0; me.reel = false;
+    me.hp = maxHp(); me.alive = true; me.inv = 1.4; me.hook = null; me.fireCd = 0.3; me.hookCd = 0; me.spawnAge = 0;
+    refill();
+    ring(me.x, me.y, COLORS[me.color]);
+    pushPresence(true);
+  }
+
+  /* Every round of a match starts from the same spot with full health and a full magazine. */
+  function resetRound() {
+    const s = MATCH_SPAWNS[match.side] || MATCH_SPAWNS[0];
+    me.x = s[0]; me.y = s[1]; me.vx = 0; me.vy = 0; me.hp = maxHp(); me.alive = true; me.inv = 0; me.hook = null;
+    me.fireCd = 0; me.hookCd = 0; me.spawnAge = 0; me.jumpBuf = 0;
+    refill();
+    me.bullets = []; me.hits = []; bullets.length = 0; mouse.down = false;
     ring(me.x, me.y, COLORS[me.color]);
     pushPresence(true);
   }
 
   function die(killer) {
-    me.alive = false; me.hp = 0; me.deaths++; me.lastKiller = killer || ''; me.hook = null; me.respawnT = 2.4;
-    me.killerName = killer ? nameOfPeer(killer) : 'the arena';
+    me.alive = false; me.hp = 0; me.deaths++; me.hook = null; me.poison.t = 0; mouse.down = false;
     sparks(me.x, me.y, COLORS[me.color], 22);
-    addFeed(me.killerName + ' shot ' + me.name);
-    mouse.down = false;
+    me.lastKiller = killer || '';
+    if (mode === 'match') {
+      if (net) net.send({ t: 'dead' });
+    } else {
+      me.respawnT = 2.4;
+      me.killerName = killer ? nameOfPeer(killer) : 'the arena';
+      addFeed(me.killerName + ' shot ' + me.name);
+    }
     pushPresence(true);
   }
 
   function hitMe(b) {
-    me.hp = Math.max(0, me.hp - DMG); me.hurt = 0.14;
+    me.hp = Math.max(0, me.hp - b.dmg); me.hurt = 0.14;
+    if (b.pz > 0) me.poison = { t: 3, dps: Math.max(me.poison.t > 0 ? me.poison.dps : 0, 3 * b.pz), by: b.owner };
     me.hits.push(b.key); if (me.hits.length > 8) me.hits.shift();
-    sparks(b.x, b.y, b.col, 7);
+    sparks(b.x, b.y, b.pz > 0 ? '#5fae2c' : b.col, 7);
     if (me.hp <= 0) die(b.owner); else pushPresence(true);
   }
 
   function hitDummy(b) {
-    dummy.hp -= DMG; dummy.hurt = 0.14;
+    dummy.hp -= b.dmg; dummy.hurt = 0.14;
     sparks(b.x, b.y, '#9aa7b2', 7);
     if (dummy.hp <= 0) {
       dummy.alive = false; dummy.respawn = 1.6;
@@ -486,27 +640,43 @@ kbd {
     }
   }
 
+  function gunStats() {
+    const n = me.ups.shotgun;
+    if (n > 0) return { pellets: 4 + 2 * n, dmg: 9, spread: 0.17, speed: 1050, life: 0.42, cd: 0.75, kick: 170 };
+    return { pellets: 1, dmg: 20, spread: 0, speed: 1150, life: 1.2, cd: 0.26, kick: 40 };
+  }
+
   function tryShoot() {
-    if (!me.alive || me.fireCd > 0) return;
-    me.fireCd = FIRE_CD;
-    const a = me.aim, c = Math.cos(a), s = Math.sin(a);
-    const ox = me.x + c * 26, oy = me.y + s * 26;
-    const id = ++me.bid;
-    bullets.push({ key: 'me:' + id, owner: myPeer || '', mine: true, x: ox, y: oy, vx: c * BULLET_SPEED, vy: s * BULLET_SPEED, life: 1.2, col: COLORS[me.color] });
-    me.bullets.push([id, Math.round(ox), Math.round(oy), Math.round(c * BULLET_SPEED), Math.round(s * BULLET_SPEED)]);
-    if (me.bullets.length > 10) me.bullets.shift();
-    me.vx -= c * 40;
+    if (!me.alive || me.fireCd > 0 || me.reload > 0 || locked()) return;
+    if (me.ammo <= 0) { me.dry = 0.8; me.fireCd = 0.25; return; }
+    const g = gunStats();
+    me.ammo--; me.fireCd = g.cd;
+    const a0 = me.aim, ox = me.x + Math.cos(a0) * 26, oy = me.y + Math.sin(a0) * 26;
+    for (let i = 0; i < g.pellets; i++) {
+      const a = a0 + (g.pellets > 1 ? (Math.random() * 2 - 1) * g.spread : 0);
+      const sp = g.speed * (g.pellets > 1 ? 0.9 + Math.random() * 0.2 : 1);
+      const vx = Math.cos(a) * sp, vy = Math.sin(a) * sp, id = ++me.bid;
+      bullets.push({ key: 'me:' + id, owner: myPeer || '', mine: true, x: ox, y: oy, vx, vy, life: g.life, col: COLORS[me.color], dmg: g.dmg, pz: me.ups.poison });
+      me.bullets.push([id, Math.round(ox), Math.round(oy), Math.round(vx), Math.round(vy), g.dmg, me.ups.poison, Math.round(g.life * 10)]);
+    }
+    while (me.bullets.length > 16) me.bullets.shift();
+    me.vx -= Math.cos(a0) * g.kick;
     sparks(ox, oy, '#ffd36b', 3);
     pushPresence(true);
   }
 
+  function startReload() {
+    if (state !== 'play' || !me.alive || me.reload > 0 || me.ammo >= MAX_AMMO || locked()) return;
+    me.reload = RELOAD_T;
+  }
+
   function fireHook() {
-    if (!me.alive || me.hookCd > 0) return;
+    if (!me.alive || me.hookCd > 0 || locked()) return;
     const a = me.aim, c = Math.cos(a), s = Math.sin(a);
     me.hook = { state: 'fly', x: me.x + c * RAD, y: me.y + s * RAD, dx: c, dy: s, trav: 0, L: 0 };
     pushPresence(true);
   }
-  function releaseHook() { me.hook = null; me.reel = false; me.hookCd = 0.15; pushPresence(true); }
+  function releaseHook() { me.hook = null; me.hookCd = 0.15; pushPresence(true); }
 
   function stepHook(dt) {
     const h = me.hook;
@@ -516,7 +686,7 @@ kbd {
     for (const r of R) { const tt = rayRect(h.x, h.y, dx, dy, r); if (tt !== null && tt < tmin) tmin = tt; }
     if (tmin <= 1) {
       h.x += dx * tmin; h.y += dy * tmin;
-      if (segHit(me.x, me.y, h.x, h.y)) { me.hook = null; me.reel = false; me.hookCd = 0.2; pushPresence(true); return; }
+      if (segHit(me.x, me.y, h.x, h.y)) { me.hook = null; me.hookCd = 0.2; pushPresence(true); return; }
       h.state = 'att'; h.pts = [[h.x, h.y]]; h.sg = [0];
       h.L = Math.max(36, Math.hypot(me.x - h.x, me.y - h.y));
       sparks(h.x, h.y, '#ffb020', 6);
@@ -527,10 +697,10 @@ kbd {
     if (h.trav > HOOK_RANGE) { me.hook = null; me.hookCd = 0.2; pushPresence(true); }
   }
 
-  function movePlayer(dt) {
+  function movePlayer(dt, lk) {
     me.aim = Math.atan2(mouse.y - me.y, mouse.x - me.x);
     const h = me.hook, att = !!(h && h.state === 'att');
-    const left = keys.has('KeyA') || keys.has('ArrowLeft'), right = keys.has('KeyD') || keys.has('ArrowRight');
+    const left = !lk && (keys.has('KeyA') || keys.has('ArrowLeft')), right = !lk && (keys.has('KeyD') || keys.has('ArrowRight'));
     const dir = (right ? 1 : 0) - (left ? 1 : 0);
 
     if (dir !== 0) {
@@ -543,7 +713,7 @@ kbd {
     }
     if (me.onGround && Math.abs(me.vx) > MAXRUN) me.vx -= Math.sign(me.vx) * 1800 * dt;
 
-    me.jumpBuf = Math.max(0, me.jumpBuf - dt);
+    me.jumpBuf = lk ? 0 : Math.max(0, me.jumpBuf - dt);
     me.coyote = me.onGround ? 0.1 : Math.max(0, me.coyote - dt);
     if (me.jumpBuf > 0) {
       if (me.coyote > 0) { me.vy = -JUMP; me.coyote = 0; me.jumpBuf = 0; me.onGround = false; }
@@ -563,7 +733,7 @@ kbd {
       let fixed = 0;
       for (let i = 0; i < hh.pts.length - 1; i++) fixed += Math.hypot(hh.pts[i + 1][0] - hh.pts[i][0], hh.pts[i + 1][1] - hh.pts[i][1]);
       const P = hh.pts[hh.pts.length - 1];
-      const ropeUp = keys.has('KeyW') || keys.has('ArrowUp'), ropeDown = keys.has('KeyS') || keys.has('ArrowDown');
+      const ropeUp = !lk && (keys.has('KeyW') || keys.has('ArrowUp')), ropeDown = !lk && (keys.has('KeyS') || keys.has('ArrowDown'));
       if (ropeDown && !ropeUp) hh.L = Math.min(fixed + 640, hh.L + 420 * dt);
       if (ropeUp && !ropeDown) {
         hh.L = Math.max(fixed + (hh.pts.length > 1 ? 6 : 36), hh.L - 540 * dt);
@@ -581,7 +751,7 @@ kbd {
         if (vn > 0) { me.vx -= vn * nx; me.vy -= vn * ny; }
       }
       collide(me);
-      if (!updateRope(hh, px0, py0)) { me.hook = null; me.reel = false; me.hookCd = 0.15; pushPresence(true); }
+      if (!updateRope(hh, px0, py0)) { me.hook = null; me.hookCd = 0.15; pushPresence(true); }
     }
   }
 
@@ -595,7 +765,7 @@ kbd {
       if (b.life <= 0) { bullets.splice(i, 1); continue; }
       if (b.mine) {
         if (dummyActive() && dummy.alive && Math.hypot(b.x - dummy.x, b.y - (dummy.y + 7)) < RAD + 9) { hitDummy(b); bullets.splice(i, 1); }
-      } else if (me.alive && me.inv <= 0 && Math.hypot(b.x - me.x, b.y - (me.y + 7)) < RAD + 9) {
+      } else if (me.alive && me.inv <= 0 && fighting() && Math.hypot(b.x - me.x, b.y - (me.y + 7)) < RAD + 9) {
         hitMe(b); bullets.splice(i, 1);
       }
     }
@@ -603,11 +773,21 @@ kbd {
 
   function stepPlay(dt) {
     me.fireCd = Math.max(0, me.fireCd - dt); me.hookCd = Math.max(0, me.hookCd - dt);
-    me.inv = Math.max(0, me.inv - dt); me.hurt = Math.max(0, me.hurt - dt); me.spawnAge += dt;
+    me.inv = Math.max(0, me.inv - dt); me.hurt = Math.max(0, me.hurt - dt); me.spawnAge += dt; me.dry = Math.max(0, me.dry - dt);
+    if (me.reload > 0) { me.reload -= dt; if (me.reload <= 0) { me.reload = 0; me.ammo = MAX_AMMO; } }
     dummy.hurt = Math.max(0, dummy.hurt - dt);
     if (!dummy.alive) { dummy.respawn -= dt; if (dummy.respawn <= 0) { dummy.alive = true; dummy.hp = 100; ring(dummy.x, dummy.y, '#9aa7b2'); } }
-    if (!me.alive) { me.respawnT -= dt; if (me.respawnT <= 0) spawnMe(); }
-    else movePlayer(dt);
+    const lk = locked();
+    if (!me.alive) {
+      if (mode !== 'match') { me.respawnT -= dt; if (me.respawnT <= 0) spawnMe(); }
+    } else {
+      if (me.poison.t > 0 && !lk) {
+        me.poison.t -= dt; me.hp -= me.poison.dps * dt;
+        if (Math.random() < dt * 8) sparks(me.x, me.y - 8, '#5fae2c', 1);
+        if (me.hp <= 0) { me.hp = 0; die(me.poison.by); }
+      }
+      if (me.alive) movePlayer(dt, lk);
+    }
     stepBullets(dt);
   }
 
@@ -715,7 +895,8 @@ kbd {
 
     ctx.beginPath(); ctx.arc(0, 0, BODY, 0, 6.2832);
     ctx.fillStyle = body; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+    if (o.pz) { ctx.fillStyle = 'rgba(95,174,44,0.5)'; ctx.fill(); }
+    ctx.lineWidth = 3; ctx.strokeStyle = o.pz ? '#2c7a14' : INK; ctx.stroke();
     const px = -s, py = c;
     for (const sd of [-1, 1]) {
       const cx = c * 4.5 + px * sd * 5, cy = s * 4.5 + py * sd * 5 - 1;
@@ -725,8 +906,14 @@ kbd {
 
     ctx.save();
     ctx.rotate(aim); if (face < 0) ctx.scale(1, -1);
-    ctx.fillStyle = INK; ctx.fillRect(9, -3.5, 23, 7); ctx.fillRect(9, 0, 7, 10);
-    ctx.fillStyle = '#5a6773'; ctx.fillRect(11, -3.5, 17, 2);
+    if (o.gun) {
+      ctx.fillStyle = '#7a4a2a'; ctx.fillRect(5, -1, 12, 9);
+      ctx.fillStyle = INK; ctx.fillRect(14, -4, 27, 8);
+      ctx.fillStyle = '#5a6773'; ctx.fillRect(16, -4, 22, 2.5); ctx.fillRect(14, 4, 20, 3);
+    } else {
+      ctx.fillStyle = INK; ctx.fillRect(9, -3.5, 23, 7); ctx.fillRect(9, 0, 7, 10);
+      ctx.fillStyle = '#5a6773'; ctx.fillRect(11, -3.5, 17, 2);
+    }
     ctx.restore();
 
     for (const hand of [aB, aA]) {
@@ -739,7 +926,8 @@ kbd {
       ctx.save(); ctx.globalAlpha = o.alpha == null ? 1 : o.alpha;
       const bx = x - 19, by = y - RAD - 17;
       ctx.fillStyle = INK; ctx.fillRect(bx, by, 38, 7);
-      ctx.fillStyle = o.hp <= 35 ? '#e5483d' : '#2fbf71'; ctx.fillRect(bx + 1.5, by + 1.5, 35 * Math.max(0, o.hp) / 100, 4);
+      const frac = Math.max(0, Math.min(1, o.hp / (o.mh || 100)));
+      ctx.fillStyle = frac <= 0.35 ? '#e5483d' : '#2fbf71'; ctx.fillRect(bx + 1.5, by + 1.5, 35 * frac, 4);
       if (o.name) { ctx.font = '700 12px "Space Grotesk", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.fillText(o.name, x, by - 5); }
       ctx.restore();
     }
@@ -789,13 +977,13 @@ kbd {
     for (const r of remotes.values()) {
       if (!r.alive) continue;
       updateLegs(r.anim, r.x, r.y, r.vx, r.vy, dtFrame);
-      drawBlob(r.x, r.y, r.col, r.aim, { hp: r.hp, name: r.name, anim: r.anim });
+      drawBlob(r.x, r.y, r.col, r.aim, { hp: r.hp, mh: r.mh, name: r.name, anim: r.anim, gun: r.gn, pz: r.pz });
     }
     if (me.alive) {
       const grow = Math.min(1, me.spawnAge / 0.35);
       const blink = me.inv > 0 && Math.floor(t * 14) % 2 === 0 ? 0.45 : 1;
       updateLegs(me.anim, me.x, me.y, me.vx, me.vy, dtFrame);
-      drawBlob(me.x, me.y, COLORS[me.color], me.aim, { hp: me.hp, name: me.name, scale: 0.2 + 0.8 * grow, alpha: blink, flash: me.hurt > 0, anim: me.anim });
+      drawBlob(me.x, me.y, COLORS[me.color], me.aim, { hp: me.hp, mh: maxHp(), name: me.name, scale: 0.2 + 0.8 * grow, alpha: blink, flash: me.hurt > 0, anim: me.anim, gun: me.ups.shotgun > 0, pz: me.poison.t > 0 });
     }
     for (const b of bullets) {
       ctx.strokeStyle = b.col; ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -827,103 +1015,259 @@ kbd {
   }
 
   /* ---------- hud / menu ---------- */
-  const hpFill = $('hpFill'), hpText = $('hpText'), kd = $('kd'), boardEl = $('board'), feedEl = $('feed'), cmsg = $('cmsg');
+  const hpFill = $('hpFill'), hpText = $('hpText'), kd = $('kd'), boardEl = $('board'), boardBox = $('boardBox'), feedEl = $('feed'), cmsg = $('cmsg');
+  const mbar = $('matchbar'), mbL = $('mbL'), mbR = $('mbR'), mbS = $('mbS'), mbInfo = $('mbInfo'), banner = $('banner');
+  const ammoBox = $('ammo'), ammoNum = $('ammoNum'), gunName = $('gunName'), pipsEl = $('pips'), ammoMsg = $('ammoMsg'), rlBar = $('rlBar'), rlFill = $('rlFill');
+  const cardsEl = $('cards'), resultEl = $('result'), leaveEl = $('leave');
+  const menuEl = $('menu'), hudEl = $('hud'), nameIn = $('nameIn'), hintEl = $('hint');
+  const playBtn = $('playBtn'), practiceBtn = $('practiceBtn');
+  const CARD_NAMES = { shotgun: 'the shotgun', poison: 'poison shots', shield: 'a shield' };
+
+  for (let i = 0; i < MAX_AMMO; i++) pipsEl.appendChild(document.createElement('i'));
+  const pipEls = Array.from(pipsEl.children);
+
+  const myScore = () => num(match.scores[myPeer], 0);
+  const oppScore = () => num(match.scores[match.opp.id], 0);
+
+  let ammoKey = '';
+  function updateAmmo() {
+    const rl = me.reload > 0;
+    const prog = rl ? Math.round((1 - me.reload / RELOAD_T) * 40) : 0;
+    const key = me.ammo + '|' + rl + '|' + (me.dry > 0) + '|' + (me.ups.shotgun > 0) + '|' + prog;
+    if (key === ammoKey) return;
+    ammoKey = key;
+    ammoNum.textContent = me.ammo + ' / ' + MAX_AMMO;
+    gunName.textContent = me.ups.shotgun > 0 ? 'Shotgun' : 'Pistol';
+    pipEls.forEach((p, i) => p.classList.toggle('on', i < me.ammo));
+    ammoBox.dataset.empty = me.ammo === 0 && !rl ? '1' : '0';
+    ammoMsg.textContent = rl ? 'Reloading…' : (me.ammo === 0 ? 'Press R to reload' : (me.dry > 0 ? 'Press R to reload' : ''));
+    rlBar.hidden = !rl;
+    rlFill.style.width = (prog / 40 * 100) + '%';
+  }
+
+  function centerMessage() {
+    if (mode === 'match') {
+      if (match.phase === 'countdown') return 'Round ' + match.round + '\n' + (match.cdLeft > 0 ? Math.ceil(match.cdLeft) : '');
+      if (match.phase === 'fight' && match.goFlash > 0) return 'FIGHT!';
+      if (match.phase === 'between') return match.pointText;
+      if (match.phase === 'pick' && !match.picking) return match.pointText + '\n' + match.opp.name + ' is choosing an upgrade…';
+      return '';
+    }
+    if (!me.alive && state === 'play') return 'Shot by ' + me.killerName + '. Back in ' + Math.max(1, Math.ceil(me.respawnT));
+    return '';
+  }
+
+  function upgradeText() {
+    const u = me.ups, out = [];
+    if (u.shotgun) out.push('Shotgun' + (u.shotgun > 1 ? ' x' + u.shotgun : ''));
+    if (u.poison) out.push('Poison' + (u.poison > 1 ? ' x' + u.poison : ''));
+    if (u.shield) out.push('Shield' + (u.shield > 1 ? ' x' + u.shield : ''));
+    return out.join(' · ');
+  }
 
   function updateHud() {
-    hpFill.style.width = Math.max(0, me.hp) + '%';
-    hpFill.dataset.low = me.hp <= 35 ? '1' : '0';
-    hpText.textContent = 'Health ' + Math.max(0, me.hp);
-    kd.textContent = 'Kills ' + me.kills + '  ·  Deaths ' + me.deaths;
+    const mh = maxHp();
+    hpFill.style.width = Math.max(0, Math.min(100, me.hp / mh * 100)) + '%';
+    hpFill.dataset.low = me.hp / mh <= 0.35 ? '1' : '0';
+    hpText.textContent = 'Health ' + Math.ceil(Math.max(0, me.hp)) + ' / ' + mh;
+    kd.textContent = mode === 'match' ? upgradeText() : 'Kills ' + me.kills + '  ·  Deaths ' + me.deaths;
 
-    const rows = [{ n: me.name, k: me.kills, d: me.deaths, me: true }];
-    for (const r of remotes.values()) rows.push({ n: r.name, k: r.k || 0, d: r.d || 0, me: false });
-    rows.sort((a, b) => b.k - a.k || a.d - b.d);
-    const lis = rows.map((row) => {
-      const li = document.createElement('li');
-      if (row.me) li.className = 'me';
-      const a = document.createElement('span'); a.className = 'nm'; a.textContent = row.n + (row.me ? ' (you)' : '');
-      const b = document.createElement('span'); b.className = 'sc'; b.textContent = row.k + ' / ' + row.d;
-      li.append(a, b); return li;
-    });
-    boardEl.replaceChildren(...lis);
+    mbar.hidden = mode !== 'match';
+    banner.hidden = mode !== 'queue';
+    boardBox.hidden = mode === 'match';
+    if (mode === 'match') {
+      mbL.textContent = me.name; mbR.textContent = match.opp.name;
+      mbS.textContent = myScore() + ' - ' + oppScore();
+      mbInfo.textContent = 'First to ' + WIN_SCORE + ' · Round ' + match.round;
+    } else if (mode === 'queue') {
+      banner.textContent = 'Searching for an opponent… practice on the dummy while you wait';
+    }
+
+    if (mode !== 'match') {
+      const rows = [{ n: me.name, k: me.kills, d: me.deaths, me: true }];
+      for (const r of remotes.values()) rows.push({ n: r.name, k: 0, d: 0, me: false });
+      rows.sort((a, b) => b.k - a.k || a.d - b.d);
+      boardEl.replaceChildren(...rows.map((row) => {
+        const li = document.createElement('li');
+        if (row.me) li.className = 'me';
+        const a = document.createElement('span'); a.className = 'nm'; a.textContent = row.n + (row.me ? ' (you)' : '');
+        const b = document.createElement('span'); b.className = 'sc'; b.textContent = row.k + ' / ' + row.d;
+        li.append(a, b); return li;
+      }));
+    }
 
     while (feed.length && t - feed[0].at > 5) feed.shift();
     feedEl.replaceChildren(...feed.map((f) => { const li = document.createElement('li'); li.textContent = f.text; return li; }));
 
-    if (!me.alive && state === 'play') {
-      cmsg.hidden = false;
-      cmsg.textContent = 'Shot by ' + me.killerName + '. Back in ' + Math.max(1, Math.ceil(me.respawnT));
-    } else cmsg.hidden = true;
+    const msg = centerMessage();
+    cmsg.hidden = !msg || !cardsEl.hidden || !resultEl.hidden || !leaveEl.hidden;
+    cmsg.textContent = msg;
   }
 
-  function refreshStatus() {
-    const el = $('status');
-    let n = 0;
-    if (room) for (const p of room.peers()) if (!p.sameTab && p.kind === 'viewer' && p.presence && p.presence.g === 1) n++;
-    const live = !!room && room.connected();
-    el.dataset.live = live ? '1' : '0';
-    el.textContent = !room ? 'Practice mode only: live fights are not available in this view'
-      : !live ? 'Connecting to the arena…'
-      : n === 0 ? 'The arena is empty. Start to drop in.'
-      : n + (n === 1 ? ' player' : ' players') + ' in the arena right now';
+  function refreshMenu() {
+    const live = !!net && net.connected();
+    $('online').dataset.live = live ? '1' : '0';
+    $('srvDot').dataset.live = live ? '1' : '0';
+    const n = stats.online;
+    $('onlineText').textContent = !net ? 'Online play runs on the main site' : (!live ? 'Connecting…' : n + (n === 1 ? ' player online' : ' players online'));
+    $('srvTotals').textContent = live ? stats.q + ' searching · ' + Math.floor(stats.m / 2) + (Math.floor(stats.m / 2) === 1 ? ' match' : ' matches') + ' live' : '';
+    playBtn.disabled = !live;
+    const st = $('status');
+    st.dataset.live = live ? '1' : '0';
+    st.textContent = menuNote || (!net ? 'Quick Play needs the online server. You can still practice alone.' : (!live ? 'Connecting to the server…' : 'Quick Play finds you an opponent. While you wait you can shoot the dummy.'));
+  }
+
+  /* ---------- overlays ---------- */
+  function showCards(on) { cardsEl.hidden = !on; if (on) { leaveEl.hidden = true; const first = cardsEl.querySelector('.card'); if (first) first.focus({ preventScroll: true }); } }
+  function chooseCard(card) {
+    if (cardsEl.hidden || !net) return;
+    net.send({ t: 'pick', c: card });
+    showCards(false);
+    match.picking = false; match.pointText = 'You took ' + CARD_NAMES[card];
+  }
+  cardsEl.querySelectorAll('.card').forEach((b) => b.addEventListener('click', () => chooseCard(b.dataset.card)));
+
+  function showResult(winnerId, reason) {
+    const won = winnerId === myPeer;
+    $('resTitle').textContent = won ? 'You win!' : 'You lose';
+    $('resSub').textContent = reason === 'left' ? 'Your opponent left the match.' : myScore() + ' - ' + oppScore() + ' against ' + match.opp.name;
+    resultEl.hidden = false; leaveEl.hidden = true; showCards(false);
+    $('againBtn').focus({ preventScroll: true });
   }
 
   /* ---------- flow ---------- */
-  const menuEl = $('menu'), hudEl = $('hud'), nameIn = $('nameIn'), hintEl = $('hint');
-
-  function startGame() {
+  function startArena(m) {
     if (state === 'play') return;
-    me.name = cleanName(nameIn.value) || 'Blob';
+    mode = m;
+    me.name = cleanName(nameIn.value);
     if (!nameIn.value.trim()) me.name = 'Blob' + (100 + Math.floor(Math.random() * 900));
     try { localStorage.setItem('gg-name', nameIn.value.trim()); } catch (e) { /* storage unavailable */ }
     remotes.clear(); bullets.length = 0; parts.length = 0; feed.length = 0;
-    myPeer = null;
-    if (room) {
+    me.kills = 0; me.deaths = 0; me.bullets = []; me.hits = []; me.lastKiller = '';
+    me.ups = { shotgun: 0, poison: 0, shield: 0 };
+    match.phase = 'idle'; match.opp = { id: '', name: '', color: 4 }; match.scores = {};
+    if (!net) myPeer = null;
+    me.color = Math.floor(Math.random() * COLORS.length);
+    if (room && !net) {
       for (const p of room.peers()) if (p.sameTab) myPeer = p.peer;
       const used = new Set();
       for (const p of room.peers()) if (!p.sameTab && p.presence && p.presence.g === 1) used.add(num(p.presence.c, -1));
       const free = COLORS.map((_, i) => i).filter((i) => !used.has(i));
-      const pool = free.length ? free : COLORS.map((_, i) => i);
-      me.color = pool[Math.floor(Math.random() * pool.length)];
-    } else me.color = Math.floor(Math.random() * COLORS.length);
-    me.kills = 0; me.deaths = 0; me.bullets = []; me.hits = []; me.lastKiller = '';
-    state = 'play';
+      if (free.length) me.color = free[Math.floor(Math.random() * free.length)];
+    }
+    state = 'play'; menuNote = '';
     menuEl.hidden = true; hudEl.hidden = false;
     cv.style.cursor = 'none';
     hintEl.classList.remove('fade'); void hintEl.offsetWidth; hintEl.classList.add('fade');
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    acc = 0; spawnMe();
+    acc = 0; ammoKey = ''; spawnMe();
     syncRemote(0);
   }
 
-  function leaveGame() {
+  function quickPlay() {
+    if (!net || !net.connected() || state === 'play') return;
+    startArena('queue');
+    net.send({ t: 'q', n: me.name });
+  }
+
+  function leaveGame(note) {
     if (state !== 'play') return;
-    state = 'menu';
+    if (net) {
+      if (mode === 'queue') net.send({ t: 'uq' });
+      else if (mode === 'match' && match.phase !== 'over') net.send({ t: 'leave' });
+    }
+    state = 'menu'; mode = 'practice'; match.phase = 'idle';
     me.hook = null; me.alive = false; mouse.down = false; keys.clear();
-    if (room) room.presence({ g: 0, hk: null, al: 0 }).catch(() => {});
+    if (room && !net) room.presence({ g: 0, hk: null, al: 0 }).catch(() => {});
     remotes.clear(); bullets.length = 0;
+    cardsEl.hidden = true; resultEl.hidden = true; leaveEl.hidden = true;
     menuEl.hidden = false; hudEl.hidden = true;
     cv.style.cursor = 'default';
-    refreshStatus();
+    menuNote = note || '';
+    refreshMenu();
+  }
+
+  function onEscape() {
+    if (mode === 'match' && match.phase !== 'over') {
+      if (!resultEl.hidden) return;
+      leaveEl.hidden = !leaveEl.hidden;
+      if (!leaveEl.hidden) { cardsEl.hidden = true; $('leaveNo').focus({ preventScroll: true }); }
+      else if (match.phase === 'pick' && match.picking) cardsEl.hidden = false;
+      return;
+    }
+    leaveGame();
+  }
+
+  /* ---------- messages from the server ---------- */
+  function onNet(m) {
+    if (!m || typeof m.t !== 'string') return;
+    if (m.t === 'stats') { stats.online = num(m.online); stats.q = num(m.q); stats.m = num(m.m); if (state === 'menu') refreshMenu(); return; }
+    if (m.t === 'closed') {
+      if (state === 'play' && mode !== 'practice') leaveGame('Lost the connection to the server.');
+      else refreshMenu();
+      return;
+    }
+    if (m.t === 'match') {
+      if (!(state === 'play' && mode === 'queue')) { if (net) net.send({ t: 'leave' }); return; }
+      mode = 'match';
+      myPeer = String(m.you); me.color = Math.max(0, Math.floor(num(m.color, 0))) % COLORS.length;
+      match.id = ''; match.side = m.side === 1 ? 1 : 0; match.scores = {}; match.round = 0; match.phase = 'countdown'; match.cdLeft = 3; match.goFlash = 0;
+      match.picking = false; match.pointText = '';
+      match.opp = { id: String(m.opp && m.opp.id), name: cleanName(m.opp && m.opp.name), color: num(m.opp && m.opp.color, 4) };
+      me.kills = 0; me.deaths = 0; me.ups = { shotgun: 0, poison: 0, shield: 0 };
+      remotes.clear(); bullets.length = 0; feed.length = 0; parts.length = 0;
+      hintEl.classList.remove('fade'); void hintEl.offsetWidth; hintEl.classList.add('fade');
+      return;
+    }
+    if (mode !== 'match') return;
+    if (m.t === 'round') {
+      match.round = num(m.n, 1); match.phase = 'countdown'; match.cdLeft = num(m.cd, 3000) / 1000; match.goFlash = 0;
+      match.scores = m.scores || {}; match.picking = false; match.pointText = '';
+      const u = m.ups && m.ups[myPeer];
+      if (u) me.ups = { shotgun: num(u.shotgun), poison: num(u.poison), shield: num(u.shield) };
+      if (m.picked && m.picked.card) addFeed(nameOfPeer(m.picked.by) + ' took ' + (CARD_NAMES[m.picked.card] || 'an upgrade'));
+      cardsEl.hidden = true; leaveEl.hidden = true;
+      resetRound();
+    } else if (m.t === 'go') {
+      match.phase = 'fight'; match.goFlash = 0.9;
+    } else if (m.t === 'point') {
+      match.phase = 'between'; match.scores = m.scores || match.scores; me.hook = null; mouse.down = false;
+      const won = m.winner === myPeer;
+      match.pointText = won ? 'Point to you!' : 'Point to ' + match.opp.name;
+      addFeed(nameOfPeer(m.winner) + ' shot ' + nameOfPeer(m.loser));
+    } else if (m.t === 'offer') {
+      match.phase = 'pick'; match.picking = true;
+      if (leaveEl.hidden) showCards(true);
+    } else if (m.t === 'wait') {
+      match.phase = 'pick'; match.picking = false;
+    } else if (m.t === 'over') {
+      match.scores = m.scores || match.scores; match.phase = 'over'; me.hook = null; mouse.down = false;
+      showResult(m.winner, m.reason);
+    }
   }
 
   /* ---------- input ---------- */
-  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyF']);
+  const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyR', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyF']);
   const JUMP_KEYS = new Set(['KeyW', 'Space', 'ArrowUp']);
 
   window.addEventListener('keydown', (e) => {
     if (state === 'menu') {
-      if (e.code === 'Enter' && e.target !== $('startBtn')) { e.preventDefault(); startGame(); }
+      if (e.code === 'Enter' && e.target && e.target.tagName !== 'BUTTON') { e.preventDefault(); if (net) quickPlay(); else startArena('practice'); }
       return;
     }
-    if (e.code === 'Escape') { leaveGame(); return; }
+    if (e.code === 'Escape') { onEscape(); return; }
+    if (!cardsEl.hidden) {
+      const pick = { Digit1: 'shotgun', Numpad1: 'shotgun', Digit2: 'poison', Numpad2: 'poison', Digit3: 'shield', Numpad3: 'shield' }[e.code];
+      if (pick) chooseCard(pick);
+      return;
+    }
+    if (!resultEl.hidden || !leaveEl.hidden) return;
     if (GAME_KEYS.has(e.code)) e.preventDefault();
     if (e.repeat) return;
     keys.add(e.code);
     if (JUMP_KEYS.has(e.code) && !(me.hook && (e.code === 'KeyW' || e.code === 'ArrowUp'))) me.jumpBuf = 0.12;
-    if (me.alive) {
-      if (e.code === 'KeyF') { if (!me.hook) fireHook(); else releaseHook(); }
-    }
+    if (e.code === 'KeyR') startReload();
+    if (me.alive && e.code === 'KeyF') { if (!me.hook) fireHook(); else releaseHook(); }
   });
   window.addEventListener('keyup', (e) => {
     keys.delete(e.code);
@@ -932,13 +1276,18 @@ kbd {
   window.addEventListener('blur', () => { keys.clear(); mouse.down = false; });
   window.addEventListener('mousemove', setMouse);
   window.addEventListener('mousedown', (e) => {
-    if (state !== 'play') return;
+    if (state !== 'play' || e.target !== cv) return;
     setMouse(e);
     if (e.button === 0) { mouse.down = true; e.preventDefault(); }
   });
   window.addEventListener('mouseup', (e) => { if (e.button === 0) mouse.down = false; });
   window.addEventListener('contextmenu', (e) => { if (state === 'play') e.preventDefault(); });
-  $('startBtn').addEventListener('click', startGame);
+  playBtn.addEventListener('click', quickPlay);
+  practiceBtn.addEventListener('click', () => startArena('practice'));
+  $('againBtn').addEventListener('click', () => { leaveGame(); quickPlay(); });
+  $('menuBtn').addEventListener('click', () => leaveGame());
+  $('leaveYes').addEventListener('click', () => leaveGame());
+  $('leaveNo').addEventListener('click', () => { leaveEl.hidden = true; if (match.phase === 'pick' && match.picking) cardsEl.hidden = false; });
 
   /* ---------- loop ---------- */
   function frame(now) {
@@ -947,70 +1296,70 @@ kbd {
     if (state === 'play') {
       acc += dtF;
       while (acc >= STEP) { stepPlay(STEP); acc -= STEP; }
+      if (mode === 'match') {
+        if (match.phase === 'countdown') match.cdLeft = Math.max(0, match.cdLeft - dtF);
+        if (match.goFlash > 0) match.goFlash -= dtF;
+      }
       syncRemote(dtF);
       pushPresence(false);
+      updateAmmo();
       if (now - lastHud > 120) { lastHud = now; updateHud(); }
-    } else if (now - lastStatus > 1000) { lastStatus = now; refreshStatus(); }
+    } else if (now - lastStatus > 500) { lastStatus = now; refreshMenu(); }
     updateParts(dtF);
     render();
     requestAnimationFrame(frame);
   }
 
-  /* ---------- standalone networking ----------
-     Hosted on Render (not inside claude.ai) there is no room capability, so this gives the game the same small interface
-     (presence / peers / onPeers / connected / onConnection) on top of a WebSocket to server.js. */
-  function createSocketRoom() {
+  /* ---------- server connection ----------
+     On the hosted site there is no claude.ai room capability, so this gives the game the same small interface
+     (presence / peers / onPeers / connected / onConnection) on top of a WebSocket to server.js, plus send/onMessage. */
+  function createNet() {
     if (!location.host || typeof WebSocket === 'undefined') return null;
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-    const peerH = new Set(), connH = new Set();
+    const peerH = new Set(), connH = new Set(), msgH = new Set();
     const local = {};
     let ws = null, myId = null, isUp = false, peerList = [], tries = 0;
-    const tellPeers = () => { for (const f of peerH) { try { f({ peers: peerList, joined: [], left: [], updated: [] }); } catch (e) { /* listener error */ } } };
-    const tellConn = () => { for (const f of connH) { try { f(isUp); } catch (e) { /* listener error */ } } };
+    const each = (set, f) => { for (const h of set) { try { f(h); } catch (e) { /* listener error */ } } };
     function connect() {
       ws = new WebSocket(url);
-      ws.onopen = () => { isUp = true; tries = 0; tellConn(); if (Object.keys(local).length) ws.send(JSON.stringify({ t: 'p', d: local })); };
+      ws.onopen = () => { isUp = true; tries = 0; each(connH, (h) => h(true)); };
       ws.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'hello') myId = m.id;
         else if (m.t === 's' && Array.isArray(m.peers)) {
           peerList = m.peers.map((q) => ({ peer: q.id, by: null, isMe: q.id === myId, sameTab: q.id === myId, kind: 'viewer', guest: false, presence: q.p || {}, updatedAt: Date.now() }));
-          tellPeers();
-        }
+        } else each(msgH, (h) => h(m));
       };
-      ws.onclose = () => { isUp = false; peerList = []; tellConn(); tellPeers(); setTimeout(connect, Math.min(5000, 400 * Math.pow(2, tries++))); };
+      ws.onclose = () => { isUp = false; peerList = []; each(connH, (h) => h(false)); each(msgH, (h) => h({ t: 'closed' })); setTimeout(connect, Math.min(5000, 400 * Math.pow(2, tries++))); };
       ws.onerror = () => { try { ws.close(); } catch (e) { /* already closed */ } };
     }
     connect();
     return {
+      send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); },
       presence(patch) {
         for (const k in patch) { if (patch[k] === null) delete local[k]; else local[k] = patch[k]; }
         if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'p', d: patch }));
         return Promise.resolve();
       },
       peers: () => peerList,
-      onPeers(f) { peerH.add(f); return () => peerH.delete(f); },
       connected: () => isUp,
-      onConnection(f) { connH.add(f); f(isUp); return () => connH.delete(f); }
+      onConnection(f) { connH.add(f); f(isUp); return () => connH.delete(f); },
+      onMessage(f) { msgH.add(f); return () => msgH.delete(f); }
     };
   }
 
   /* ---------- boot ---------- */
   try { const saved = localStorage.getItem('gg-name'); if (saved) nameIn.value = cleanName(saved); } catch (e) { /* storage unavailable */ }
   resize();
-  refreshStatus();
+  refreshMenu();
   requestAnimationFrame(frame);
 
   (async () => {
     try {
       if (window.claude && typeof window.claude.use === 'function') room = await window.claude.use('room');
-      else room = createSocketRoom();
-    } catch (e) { room = null; }
-    if (room) {
-      room.onPeers(() => { if (state === 'menu') refreshStatus(); });
-      room.onConnection(() => { if (state === 'menu') refreshStatus(); });
-    }
-    refreshStatus();
+      else { net = createNet(); room = net; if (net) { net.onMessage(onNet); net.onConnection(() => { if (state === 'menu') refreshMenu(); }); } }
+    } catch (e) { room = null; net = null; }
+    refreshMenu();
   })();
 })();
 </script>
