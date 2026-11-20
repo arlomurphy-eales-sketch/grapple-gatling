@@ -154,6 +154,15 @@ kbd {
 .card[data-card="shield"] { --cc: #3e7bfa; }
 .resbtns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 @media (prefers-reduced-motion: reduce) { .card, .card:hover { transition: none; } }
+
+.srv-row + .srv-row { border-top: 2px solid rgba(18, 22, 27, 0.12); padding-top: 10px; }
+.diff { display: flex; gap: 8px; flex-wrap: wrap; }
+.ghost.sm { padding: 0.5em 1em; font-size: 0.9rem; border-radius: 9px; }
+.ghost.sm[data-diff="easy"]:hover { background: #cfeec0; }
+.ghost.sm[data-diff="medium"]:hover { background: #ffe3a8; }
+.ghost.sm[data-diff="hard"]:hover { background: #ffc4be; }
+.hint { grid-column: 1; grid-row: 2; align-self: start; justify-self: start; max-width: 300px; }
+.ammo { background: rgba(244, 248, 250, 0.78); }
 </style>
 
 </head>
@@ -173,6 +182,15 @@ kbd {
           <span id="srvDot" class="dot" data-live="0"></span>
           <div class="srv-info"><b>Global arena</b><small>1v1 · first to 3 points</small></div>
           <button id="playBtn" class="start sm" type="button" disabled>Quick Play</button>
+        </div>
+        <div class="srv-row">
+          <span class="dot" data-live="1"></span>
+          <div class="srv-info"><b>Bot match</b><small>Play alone against an AI · first to 3 points</small></div>
+          <div class="diff" role="group" aria-label="Bot difficulty">
+            <button class="ghost sm" type="button" data-diff="easy">Easy</button>
+            <button class="ghost sm" type="button" data-diff="medium">Medium</button>
+            <button class="ghost sm" type="button" data-diff="hard">Hard</button>
+          </div>
         </div>
       </div>
       <label class="namebox"><span>Name</span><input id="nameIn" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Blob"></label>
@@ -249,7 +267,7 @@ kbd {
 
   <section id="leave" class="overlay" hidden>
     <h2 class="ov-title">Leave the match?</h2>
-    <p class="ov-sub">Your opponent gets the win.</p>
+    <p id="leaveSub" class="ov-sub">Your opponent gets the win.</p>
     <div class="resbtns">
       <button id="leaveYes" class="ghost" type="button">Leave</button>
       <button id="leaveNo" class="start sm" type="button">Keep playing</button>
@@ -282,7 +300,7 @@ kbd {
   ];
   const LEGOFF = 14; /* body is a two-circle capsule so the legs have room under the torso */
   const SPAWNS = [[80, 632], [1200, 632], [225, 508], [1055, 508], [640, 398], [285, 278], [995, 278], [640, 168]];
-  const MATCH_SPAWNS = [[150, 632], [1130, 632]];
+  const MATCH_SPAWNS = [[280, 632], [1000, 632]];
 
   /* ---------- helpers ---------- */
   const $ = (id) => document.getElementById(id);
@@ -414,8 +432,10 @@ kbd {
   let last = performance.now(), acc = 0, t = 0, lastPush = 0, lastHud = 0, lastStatus = 0, dtFrame = 0.016;
 
   const newAnim = () => ({ phase: 0, f: [{ x: -5, y: 22 }, { x: 5, y: 22 }], init: false });
-  const keys = new Set();
-  const mouse = { x: 640, y: 360, down: false };
+  let keys = new Set();
+  let mouse = { x: 640, y: 360, down: false };
+  /* the bot borrows the player's physics by swapping these three in for a moment (see asBot) */
+  let botMatch = null, bot = null, botKeys = new Set(), botMouse = { x: 640, y: 360, down: false }, ai = null, lastBot = '';
   const bullets = [];
   const parts = [];
   const remotes = new Map();
@@ -423,7 +443,7 @@ kbd {
 
   const stats = { online: 0, q: 0, m: 0 };
   const match = { id: '', side: 0, opp: { id: '', name: '', color: 4 }, scores: {}, round: 0, phase: 'idle', cdLeft: 0, goFlash: 0, pointText: '', picking: false };
-  const me = {
+  let me = {
     x: 640, y: 600, vx: 0, vy: 0, hp: 100, alive: false, aim: 0,
     onGround: false, wallL: false, wallR: false, coyote: 0, jumpBuf: 0, fireCd: 0, hookCd: 0,
     inv: 0, hurt: 0, spawnAge: 1, respawnT: 0, kills: 0, deaths: 0, bid: 0, anim: newAnim(),
@@ -489,7 +509,7 @@ kbd {
 
   /* ---------- networking (the opponent's state arrives as presence) ---------- */
   function pushPresence(force) {
-    if (!room || (net && mode !== 'match')) return;
+    if (!room || botMatch || (net && mode !== 'match')) return;
     const now = performance.now();
     if (!force && now - lastPush < 50) return;
     lastPush = now;
@@ -615,7 +635,7 @@ kbd {
     sparks(me.x, me.y, COLORS[me.color], 22);
     me.lastKiller = killer || '';
     if (mode === 'match') {
-      if (net) net.send({ t: 'dead' });
+      toServer({ t: 'dead', who: me.isBot ? 'bot' : 'you' });
     } else {
       me.respawnT = 2.4;
       me.killerName = killer ? nameOfPeer(killer) : 'the arena';
@@ -658,7 +678,7 @@ kbd {
       const a = a0 + (g.pellets > 1 ? (Math.random() * 2 - 1) * g.spread : 0);
       const sp = g.speed * (g.pellets > 1 ? 0.9 + Math.random() * 0.2 : 1);
       const vx = Math.cos(a) * sp, vy = Math.sin(a) * sp, id = ++me.bid;
-      bullets.push({ key: 'me:' + id, owner: myPeer || '', mine: true, x: ox, y: oy, vx, vy, life: g.life, col: COLORS[me.color], dmg: g.dmg, pz: me.ups.poison });
+      bullets.push({ key: (me.isBot ? 'bot:' : 'me:') + id, owner: me.isBot ? 'bot' : (myPeer || ''), mine: !me.isBot, x: ox, y: oy, vx, vy, life: g.life, col: COLORS[me.color], dmg: g.dmg, pz: me.ups.poison });
       me.bullets.push([id, Math.round(ox), Math.round(oy), Math.round(vx), Math.round(vy), g.dmg, me.ups.poison, Math.round(g.life * 10)]);
     }
     while (me.bullets.length > 16) me.bullets.shift();
@@ -767,6 +787,7 @@ kbd {
       if (b.life <= 0) { bullets.splice(i, 1); continue; }
       if (b.mine) {
         if (dummyActive() && dummy.alive && Math.hypot(b.x - dummy.x, b.y - (dummy.y + 7)) < RAD + 9) { hitDummy(b); bullets.splice(i, 1); }
+        else if (botMatch && bot && bot.alive && fighting() && Math.hypot(b.x - bot.x, b.y - (bot.y + 7)) < RAD + 9) { asBot(() => hitMe(b)); bullets.splice(i, 1); }
       } else if (me.alive && me.inv <= 0 && fighting() && Math.hypot(b.x - me.x, b.y - (me.y + 7)) < RAD + 9) {
         hitMe(b); bullets.splice(i, 1);
       }
@@ -790,6 +811,7 @@ kbd {
       }
       if (me.alive) movePlayer(dt, lk);
     }
+    stepBot(dt);
     stepBullets(dt);
   }
 
@@ -1122,8 +1144,8 @@ kbd {
   /* ---------- overlays ---------- */
   function showCards(on) { cardsEl.hidden = !on; if (on) { leaveEl.hidden = true; const first = cardsEl.querySelector('.card'); if (first) first.focus({ preventScroll: true }); } }
   function chooseCard(card) {
-    if (cardsEl.hidden || !net) return;
-    net.send({ t: 'pick', c: card });
+    if (cardsEl.hidden || (!net && !botMatch)) return;
+    toServer({ t: 'pick', c: card });
     showCards(false);
     match.picking = false; match.pointText = 'You took ' + CARD_NAMES[card];
   }
@@ -1174,10 +1196,11 @@ kbd {
 
   function leaveGame(note) {
     if (state !== 'play') return;
-    if (net) {
+    if (net && !botMatch) {
       if (mode === 'queue') net.send({ t: 'uq' });
       else if (mode === 'match' && match.phase !== 'over') net.send({ t: 'leave' });
     }
+    endBot();
     state = 'menu'; mode = 'practice'; match.phase = 'idle';
     me.hook = null; me.alive = false; mouse.down = false; keys.clear();
     if (room && !net) room.presence({ g: 0, hk: null, al: 0 }).catch(() => {});
@@ -1193,6 +1216,7 @@ kbd {
     if (mode === 'match' && match.phase !== 'over') {
       if (!resultEl.hidden) return;
       leaveEl.hidden = !leaveEl.hidden;
+      $('leaveSub').textContent = botMatch ? 'This ends the match against the bot.' : 'Your opponent gets the win.';
       if (!leaveEl.hidden) { cardsEl.hidden = true; $('leaveNo').focus({ preventScroll: true }); }
       else if (match.phase === 'pick' && match.picking) cardsEl.hidden = false;
       return;
@@ -1200,12 +1224,249 @@ kbd {
     leaveGame();
   }
 
+  /* ---------- bot opponent ----------
+     A bot match plays out entirely in this page: the same first-to-3 rounds and upgrade cards as an online match,
+     with a computer player instead of a second person. The bot uses the very same movement, rope and gun code as you. */
+  const BOT_LEVELS = {
+    easy:   { label: 'Easy Bot',   react: 0.45, err: 0.10,  shotMin: 0.9,  shotMax: 1.7, burst: 1, range: 700,  move: 0.55, jump: 0.10, hook: 0,    dodge: 0,    lead: 0,   dist: 470 },
+    medium: { label: 'Medium Bot', react: 0.24, err: 0.12,  shotMin: 0.45, shotMax: 1.0, burst: 2, range: 950,  move: 0.85, jump: 0.30, hook: 0.5,  dodge: 0.35, lead: 0.5, dist: 400 },
+    hard:   { label: 'Hard Bot',   react: 0.1,  err: 0.05,  shotMin: 0.25, shotMax: 0.6, burst: 3, range: 1400, move: 1,    jump: 0.5,  hook: 1,    dodge: 0.8,  lead: 0.9, dist: 340 }
+  };
+  const CARD_IDS = ['shotgun', 'poison', 'shield'];
+
+  function newEntity(color, name) {
+    return {
+      x: 0, y: 0, vx: 0, vy: 0, hp: 100, alive: false, aim: Math.PI, onGround: false, wallL: false, wallR: false, coyote: 0, jumpBuf: 0,
+      fireCd: 0, hookCd: 0, inv: 0, hurt: 0, spawnAge: 1, respawnT: 0, kills: 0, deaths: 0, bid: 0, anim: newAnim(),
+      ammo: MAX_AMMO, reload: 0, dry: 0, ups: { shotgun: 0, poison: 0, shield: 0 }, poison: { t: 0, dps: 0, by: '' },
+      bullets: [], hits: [], color, name, hook: null, lastKiller: '', killerName: '', isBot: true
+    };
+  }
+  const newAI = () => ({ t: 0, hist: [], histT: 0, err: 0, errT: 0, moveT: 0, strafe: 1, strafeT: 0, dir: 0, shotT: 1, firing: false, burst: 0, reloadWait: 0, dodgeT: 0, hookT: 4, hookAge: 0, stuckT: 0 });
+
+  /* Run `fn` with the bot standing in for the player: same physics, its own keys and mouse. */
+  function asBot(fn) {
+    const sm = me, sk = keys, sx = mouse;
+    me = bot; keys = botKeys; mouse = botMouse;
+    try { fn(sm); } finally { me = sm; keys = sk; mouse = sx; }
+  }
+
+  function syncBotRemote() {
+    let r = remotes.get('bot');
+    if (!r) { r = { id: 'bot', anim: bot.anim }; remotes.set('bot', r); }
+    const h = bot.hook, piv = [];
+    if (h && h.pts) for (let i = 1; i < h.pts.length; i++) piv.push(h.pts[i][0], h.pts[i][1]);
+    r.name = bot.name; r.col = COLORS[bot.color]; r.x = bot.x; r.y = bot.y; r.vx = bot.vx; r.vy = bot.vy; r.aim = bot.aim;
+    r.hp = bot.hp; r.mh = 100 + 25 * bot.ups.shield; r.gn = bot.ups.shotgun > 0 ? 1 : 0; r.pz = bot.poison.t > 0; r.alive = bot.alive;
+    r.hk = h ? [h.x, h.y, h.state === 'att' ? 1 : 0, piv] : null;
+  }
+
+  /* What the bot decides each tick: where to aim, when to shoot and reload, how to move, when to grapple. */
+  function botThink(dt, human) {
+    const cfg = botMatch.cfg, a = ai, b = me;                       /* me is the bot in here */
+    a.t += dt;
+    a.histT -= dt;
+    if (a.histT <= 0) {                                              /* remember where you have been, so it reacts late */
+      a.histT = 1 / 30;
+      a.hist.push({ t: a.t, x: human.x, y: human.y + 7, vx: human.vx, vy: human.vy });
+      while (a.hist.length > 60) a.hist.shift();
+    }
+    let tg = a.hist[0] || { x: human.x, y: human.y + 7, vx: 0, vy: 0 };
+    for (let i = a.hist.length - 1; i >= 0; i--) if (a.hist[i].t <= a.t - cfg.react) { tg = a.hist[i]; break; }
+    botKeys.clear();
+    if (locked() || !human.alive) { botMouse.down = false; a.firing = false; return; }
+
+    /* aim */
+    a.errT -= dt;
+    if (a.errT <= 0) { a.errT = 0.2 + Math.random() * 0.2; a.err = (Math.random() * 2 - 1) * cfg.err; }
+    let tx = tg.x, ty = tg.y;
+    const dist = Math.hypot(tx - b.x, ty - b.y);
+    if (cfg.lead) { const tt = dist / 1150 * cfg.lead; tx += tg.vx * tt; ty += tg.vy * tt * 0.5; }
+    const aim = Math.atan2(ty - b.y, tx - b.x) + a.err;
+    botMouse.x = b.x + Math.cos(aim) * 300; botMouse.y = b.y + Math.sin(aim) * 300;
+    const los = !segHit(b.x, b.y, tg.x, tg.y);
+
+    /* shoot in short bursts, then pause */
+    a.shotT -= dt;
+    const canShoot = los && dist < cfg.range && b.ammo > 0 && b.reload <= 0;
+    if (a.firing && !canShoot) { botMouse.down = false; a.firing = false; }
+    else if (a.firing) {
+      if (b.fireCd > 0) { botMouse.down = false; a.firing = false; a.burst--; a.shotT = a.burst > 0 ? 0.05 : cfg.shotMin + Math.random() * (cfg.shotMax - cfg.shotMin); }
+      else botMouse.down = true;
+    } else if (canShoot && a.shotT <= 0) {
+      if (a.burst <= 0) a.burst = cfg.burst;
+      botMouse.down = true; a.firing = true;
+    }
+
+    /* reload once the magazine is empty, or early when the better bots are out of sight */
+    if (b.reload <= 0 && b.ammo < MAX_AMMO && !a.firing) {
+      const want = b.ammo === 0 || (cfg.react < 0.3 && b.ammo <= 2 && !los);
+      a.reloadWait = want ? a.reloadWait + dt : 0;
+      if (a.reloadWait > cfg.react + 0.15) { startReload(); a.reloadWait = 0; }
+    }
+
+    /* movement: close in or back off to a preferred distance, otherwise strafe */
+    a.moveT -= dt; a.strafeT -= dt;
+    if (a.strafeT <= 0) { a.strafe = Math.random() < 0.5 ? -1 : 1; a.strafeT = 0.6 + Math.random() * 1.4 / cfg.move; }
+    if (a.moveT <= 0) {
+      a.moveT = 0.2 + Math.random() * 0.3;
+      const toward = Math.sign(tx - b.x) || 1;
+      let d = 0;
+      if (Math.random() < cfg.move) {
+        if (dist > cfg.dist + 90) d = toward; else if (dist < cfg.dist - 130) d = -toward; else d = a.strafe;
+      }
+      if (b.x < 90) d = 1; else if (b.x > 1190) d = -1;
+      a.dir = d;
+      if (b.onGround && Math.random() < cfg.jump * (los ? 1 : 0.6)) b.jumpBuf = 0.12;
+      if (b.onGround && ty < b.y - 110 && Math.abs(tx - b.x) < 260 && Math.random() < 0.5 + cfg.jump * 0.4) b.jumpBuf = 0.12;
+    }
+    if (a.dir !== 0 && b.onGround && Math.abs(b.vx) < 15) {         /* pressed against a wall or the pillar: hop over */
+      a.stuckT += dt;
+      if (a.stuckT > 0.35) { a.stuckT = 0; b.jumpBuf = 0.12; a.strafe = -a.strafe; }
+    } else a.stuckT = 0;
+
+    /* dodge shots that are heading straight at it */
+    a.dodgeT -= dt;
+    if (cfg.dodge > 0 && a.dodgeT <= 0 && b.onGround) {
+      for (const bl of bullets) {
+        if (!bl.mine) continue;
+        const rx = b.x - bl.x, ry = (b.y + 7) - bl.y, d = Math.hypot(rx, ry);
+        if (d > 320) continue;
+        const dot = (bl.vx * rx + bl.vy * ry) / (Math.hypot(bl.vx, bl.vy) * d + 1e-6);
+        if (dot > 0.96 && Math.random() < cfg.dodge) { b.jumpBuf = 0.12; a.dodgeT = 0.6; break; }
+      }
+    }
+
+    /* grappling hook: climb towards you when you are above, and (hard) swing around now and then */
+    if (cfg.hook > 0) {
+      const h = b.hook;
+      a.hookT -= dt;
+      if (!h) {
+        a.hookAge = 0;
+        if (a.hookT <= 0 && b.hookCd <= 0) {
+          const above = ty < b.y - 140;
+          a.hookT = (cfg.hook >= 1 ? 2.5 : 5) + Math.random() * 3;
+          if (above || (cfg.hook >= 1 && Math.random() < 0.5)) {
+            const hx = Math.max(-1, Math.min(1, (tx - b.x) / 300)) * 0.8 + (Math.random() - 0.5) * 0.4;
+            b.aim = Math.atan2(-1, hx);
+            fireHook();
+          }
+        }
+      } else if (h.state === 'att') {
+        a.hookAge += dt;
+        if (a.hookAge < 1.3 && b.y > ty - 30) botKeys.add('KeyW');
+        a.dir = Math.sign(tx - b.x) || a.dir;
+        if (a.hookAge > 1.5 || b.y < ty - 50) { releaseHook(); a.hookT = (cfg.hook >= 1 ? 2.5 : 5) + Math.random() * 3; }
+      }
+    }
+    if (a.dir < 0) botKeys.add('KeyA'); else if (a.dir > 0) botKeys.add('KeyD');
+  }
+
+  function stepBot(dt) {
+    if (!botMatch || !bot) return;
+    asBot((human) => {
+      me.fireCd = Math.max(0, me.fireCd - dt); me.hookCd = Math.max(0, me.hookCd - dt);
+      me.hurt = Math.max(0, me.hurt - dt); me.spawnAge += dt; me.dry = Math.max(0, me.dry - dt);
+      if (me.reload > 0) { me.reload -= dt; if (me.reload <= 0) { me.reload = 0; me.ammo = MAX_AMMO; } }
+      if (!me.alive) return;
+      const lk = locked();
+      if (me.poison.t > 0 && !lk) {
+        me.poison.t -= dt; me.hp -= me.poison.dps * dt;
+        if (Math.random() < dt * 8) sparks(me.x, me.y - 8, '#5fae2c', 1);
+        if (me.hp <= 0) { me.hp = 0; die(me.poison.by); }
+      }
+      if (me.alive) { botThink(dt, human); movePlayer(dt, lk); }
+    });
+    syncBotRemote();
+  }
+
+  function botReset() {                                              /* start of every round */
+    if (!bot) return;
+    asBot(() => {
+      const s = MATCH_SPAWNS[1 - match.side] || MATCH_SPAWNS[1];
+      me.x = s[0]; me.y = s[1]; me.vx = 0; me.vy = 0; me.hp = maxHp(); me.alive = true; me.inv = 0; me.hook = null;
+      me.fireCd = 0; me.hookCd = 0; me.spawnAge = 0; me.jumpBuf = 0; me.aim = Math.PI;
+      refill(); me.bullets = []; me.hits = [];
+      botMouse.down = false; botKeys.clear();
+      ring(me.x, me.y, COLORS[me.color]);
+    });
+    Object.assign(ai, { firing: false, burst: 0, shotT: 0.8 + Math.random() * 0.6, hist: [], reloadWait: 0, hookT: 2 + Math.random() * 3, hookAge: 0, dir: 0 });
+    syncBotRemote();
+  }
+
+  /* ---------- the match referee (what server.js does for online matches) ---------- */
+  function toServer(o) {
+    if (botMatch) botHandle(o);
+    else if (net) net.send(o);
+  }
+
+  function botBeginRound(ms, picked) {
+    const bm = botMatch;
+    if (!bm) return;
+    bm.round++; bm.phase = 'countdown'; bm.loser = null;
+    bot.ups = Object.assign({ shotgun: 0, poison: 0, shield: 0 }, bm.ups.bot);
+    onNet({ t: 'round', n: bm.round, cd: ms, scores: bm.score, ups: bm.ups, picked });
+    clearTimeout(bm.timer);
+    bm.timer = setTimeout(() => { if (botMatch === bm) { bm.phase = 'fight'; onNet({ t: 'go' }); } }, ms);
+  }
+
+  function botPick(who, card) {
+    const bm = botMatch;
+    if (!bm || bm.phase !== 'pick' || bm.loser !== who || CARD_IDS.indexOf(card) < 0) return;
+    clearTimeout(bm.timer);
+    bm.ups[who][card]++;
+    botBeginRound(2500, { by: who, card });
+  }
+
+  function botHandle(o) {
+    const bm = botMatch;
+    if (!bm) return;
+    if (o.t === 'dead') {
+      if (bm.phase !== 'fight') return;
+      const loser = o.who === 'bot' ? 'bot' : 'you', winner = loser === 'bot' ? 'you' : 'bot';
+      bm.score[winner]++;
+      if (bm.score[winner] >= WIN_SCORE) {
+        bm.phase = 'over'; clearTimeout(bm.timer);
+        onNet({ t: 'over', winner, scores: bm.score, reason: 'score' });
+        return;
+      }
+      bm.phase = 'pick'; bm.loser = loser;
+      onNet({ t: 'point', winner, loser, scores: bm.score });
+      if (loser === 'you') {
+        onNet({ t: 'offer', cards: CARD_IDS, ms: 12000 });
+        bm.timer = setTimeout(() => { if (botMatch === bm) botPick('you', CARD_IDS[Math.floor(Math.random() * 3)]); }, 13500);
+      } else {
+        onNet({ t: 'wait' });
+        bm.timer = setTimeout(() => { if (botMatch === bm) botPick('bot', CARD_IDS[Math.floor(Math.random() * 3)]); }, 1800 + Math.random() * 800);
+      }
+    } else if (o.t === 'pick') {
+      botPick('you', o.c);
+    }
+  }
+
+  function startBot(diff) {
+    if (state === 'play' || !BOT_LEVELS[diff]) return;
+    const cfg = BOT_LEVELS[diff];
+    startArena('queue');
+    lastBot = diff;
+    bot = newEntity(4, cfg.label); ai = newAI(); botKeys = new Set(); botMouse = { x: 640, y: 360, down: false };
+    botMatch = { diff, cfg, score: { you: 0, bot: 0 }, round: 0, phase: 'countdown', loser: null, timer: null, ups: { you: { shotgun: 0, poison: 0, shield: 0 }, bot: { shotgun: 0, poison: 0, shield: 0 } } };
+    onNet({ t: 'match', you: 'you', side: 0, color: 0, to: WIN_SCORE, opp: { id: 'bot', name: cfg.label, color: 4 } });
+    botBeginRound(3000, null);
+  }
+
+  function endBot() {
+    if (botMatch) clearTimeout(botMatch.timer);
+    botMatch = null; bot = null; ai = null;
+    remotes.delete('bot');
+  }
+
   /* ---------- messages from the server ---------- */
   function onNet(m) {
     if (!m || typeof m.t !== 'string') return;
     if (m.t === 'stats') { stats.online = num(m.online); stats.q = num(m.q); stats.m = num(m.m); if (state === 'menu') refreshMenu(); return; }
     if (m.t === 'closed') {
-      if (state === 'play' && mode !== 'practice') leaveGame('Lost the connection to the server.');
+      if (state === 'play' && mode !== 'practice' && !botMatch) leaveGame('Lost the connection to the server.');
       else refreshMenu();
       return;
     }
@@ -1230,6 +1491,7 @@ kbd {
       if (m.picked && m.picked.card) addFeed(nameOfPeer(m.picked.by) + ' took ' + (CARD_NAMES[m.picked.card] || 'an upgrade'));
       cardsEl.hidden = true; leaveEl.hidden = true;
       resetRound();
+      if (botMatch) botReset();
     } else if (m.t === 'go') {
       match.phase = 'fight'; match.goFlash = 0.9;
     } else if (m.t === 'point') {
@@ -1286,7 +1548,8 @@ kbd {
   window.addEventListener('contextmenu', (e) => { if (state === 'play') e.preventDefault(); });
   playBtn.addEventListener('click', quickPlay);
   practiceBtn.addEventListener('click', () => startArena('practice'));
-  $('againBtn').addEventListener('click', () => { leaveGame(); quickPlay(); });
+  $('againBtn').addEventListener('click', () => { const again = botMatch ? botMatch.diff : ''; leaveGame(); if (again) startBot(again); else quickPlay(); });
+  document.querySelectorAll('.diff button').forEach((b) => b.addEventListener('click', () => startBot(b.dataset.diff)));
   $('menuBtn').addEventListener('click', () => leaveGame());
   $('leaveYes').addEventListener('click', () => leaveGame());
   $('leaveNo').addEventListener('click', () => { leaveEl.hidden = true; if (match.phase === 'pick' && match.picking) cardsEl.hidden = false; });
@@ -1302,7 +1565,7 @@ kbd {
         if (match.phase === 'countdown') match.cdLeft = Math.max(0, match.cdLeft - dtF);
         if (match.goFlash > 0) match.goFlash -= dtF;
       }
-      syncRemote(dtF);
+      if (!botMatch) syncRemote(dtF);
       pushPresence(false);
       updateAmmo();
       if (now - lastHud > 120) { lastHud = now; updateHud(); }
