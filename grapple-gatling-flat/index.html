@@ -331,23 +331,25 @@ kbd {
     return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy));
   }
 
-  /* The corner the rope catches first while swinging from (prevX, prevY) to the player's new spot. */
+  /* The corner the rope catches next. Only corners the rope can actually reach in a straight line from the last pivot count,
+     so a pivot is never placed with the rope running through a block on the way to it. Of those, the one the swinging
+     rope sweeps over first wins; if the player moved too far in one step for that, the one on the shortest path round the block. */
   function pickCorner(P, prevX, prevY, r) {
     const corners = [[r.x, r.y, -1, -1], [r.x + r.w, r.y, 1, -1], [r.x, r.y + r.h, -1, 1], [r.x + r.w, r.y + r.h, 1, 1]];
     const aPrev = Math.atan2(prevY - P[1], prevX - P[0]);
     const delta = wrapA(Math.atan2(me.y - P[1], me.x - P[0]) - aPrev);
     const dNew = Math.hypot(me.x - P[0], me.y - P[1]);
-    let best = null, bs = 1e9, fb = null, fbd = 1e9;
+    let best = null, bs = 1e9, sp = null, spd = 1e9;
     for (const c of corners) {
       const cx = c[0] + c[2] * 1.2, cy = c[1] + c[3] * 1.2;
       const dist = Math.hypot(cx - P[0], cy - P[1]);
-      if (dist < 2) continue;
+      if (dist < 2 || segHit(P[0], P[1], cx, cy)) continue;
       const dc = wrapA(Math.atan2(cy - P[1], cx - P[0]) - aPrev);
       if (dist < dNew && Math.sign(dc) === Math.sign(delta) && Math.abs(dc) <= Math.abs(delta) + 0.02 && Math.abs(dc) < bs) { bs = Math.abs(dc); best = [cx, cy]; }
-      const dseg = distPointSeg(cx, cy, P[0], P[1], me.x, me.y);
-      if (dseg < fbd) { fbd = dseg; fb = [cx, cy]; }
+      const total = dist + Math.hypot(me.x - cx, me.y - cy) + (segHit(cx, cy, me.x, me.y) ? 100000 : 0);
+      if (total < spd) { spd = total; sp = [cx, cy]; }
     }
-    const c = best || fb;
+    const c = best || sp;
     if (!c) return null;
     const sg = Math.sign((c[0] - P[0]) * (me.y - c[1]) - (c[1] - P[1]) * (me.x - c[0])) || 1;
     return { p: c, s: sg };
